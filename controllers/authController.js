@@ -93,14 +93,12 @@ const loginUser = async (req, res) => {
       { new: true }
     );
 
-    const DOMAIN_NAME = process.env.DOMAIN_NAME || 'tempevents.local';
     const isProduction = process.env.NODE_ENV === 'production';
 
     const DEV_COOKIE = {
       httpOnly: true, // prevents xxs attacks
-      secure: false, //send over both http/https protocol
+      secure: isProduction, //send over both http/https protocol
       sameSite: 'lax',
-      domain: `.${DOMAIN_NAME}`,
       path: '/', // cookie sent and accessible to the whole site
       maxAge: 7 * 24 * 60 * 60 * 1000,
     };
@@ -108,9 +106,8 @@ const loginUser = async (req, res) => {
     // PROD cookie options (cross-site, https)
     const PROD_COOKIE = {
       httpOnly: true,
-      secure: true,
+      secure: isProduction,
       sameSite: 'none',
-      domain: `.${DOMAIN_NAME}`,
       path: '/',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     };
@@ -188,14 +185,12 @@ const logoutUser = async (req, res) => {
   user.refreshToken = null;
   await user.save();
 
-  const DOMAIN_NAME = process.env.DOMAIN_NAME || 'tempevents.local';
   const isProduction = process.env.NODE_ENV === 'production';
 
   res.clearCookie("access_token", {
     httpOnly: true,
     secure: isProduction,
     sameSite: isProduction ? "none" : "lax",
-    domain: `.${DOMAIN_NAME}`,
     path: '/',
   });
 
@@ -203,7 +198,6 @@ const logoutUser = async (req, res) => {
     httpOnly: true,
     secure: isProduction,
     sameSite: isProduction ? "none" : "lax",
-    domain: `.${DOMAIN_NAME}`,
     path: '/',
   });
 
@@ -348,7 +342,6 @@ const refreshAccessToken = async (req, res) => {
       httpOnly: true,
       secure: isProduction,
       sameSite: isProduction ? "none" : "lax",
-      domain: `.${DOMAIN_NAME}`,
       path: '/',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
