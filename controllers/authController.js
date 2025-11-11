@@ -93,26 +93,14 @@ const loginUser = async (req, res) => {
       { new: true }
     );
 
-    const isProduction = process.env.NODE_ENV === 'production';
-
-    const DEV_COOKIE = {
-      httpOnly: true, // prevents xxs attacks
-      secure: isProduction, //send over both http/https protocol
-      sameSite: 'lax',
-      path: '/', // cookie sent and accessible to the whole site
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    };
-
-    // PROD cookie options (cross-site, https)
-    const PROD_COOKIE = {
+    // might need separate config for dev/prod
+    const COOKIE = {
       httpOnly: true,
-      secure: isProduction,
+      secure: true,
       sameSite: 'none',
       path: '/',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     };
-
-    const COOKIE = isProduction ? PROD_COOKIE : DEV_COOKIE;
 
     res.cookie('access_token', accessToken, COOKIE);
     res.cookie('refresh_token', refreshToken, COOKIE);
@@ -185,12 +173,10 @@ const logoutUser = async (req, res) => {
   user.refreshToken = null;
   await user.save();
 
-  const isProduction = process.env.NODE_ENV === 'production';
-
   res.clearCookie("access_token", {
     httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? "none" : "lax",
+    secure: true,
+    sameSite: "none",
     path: '/',
   });
 
@@ -335,13 +321,11 @@ const refreshAccessToken = async (req, res) => {
     // 7d for test only, must change expiry duration for production mode
     const newAccessToken = generateToken(userId, process.env.JWT_SECRET_ACCESS, "7d");
 
-    const DOMAIN_NAME = process.env.DOMAIN_NAME || 'tempevents.local';
-    const isProduction = process.env.NODE_ENV === 'production';
 
     res.cookie("access_token", newAccessToken, {
       httpOnly: true,
-      secure: isProduction,
-      sameSite: isProduction ? "none" : "lax",
+      secure: true,
+      sameSite: "none",
       path: '/',
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
