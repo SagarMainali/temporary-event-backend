@@ -21,7 +21,7 @@ app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan("dev"));
 
-const FRONTEND_URL = process.env.FRONTEND_URL;
+const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
 
 // CORS configuration
 const corsOptions = {
@@ -30,7 +30,7 @@ const corsOptions = {
     const whitelist = [
       FRONTEND_URL, // CMS serving mai domain/origin(not subdomain)
     ];
-    const DOMAIN_NAME = process.env.DOMAIN_NAME || 'tempevents.local';
+    const DOMAIN_NAME = process.env.DOMAIN_NAME || 'localhost:5173';
     const isProduction = process.env.NODE_ENV === 'production';
     const protocol = isProduction ? 'https' : 'http';
     const port = isProduction ? '' : ':3000';
