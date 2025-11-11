@@ -21,24 +21,25 @@ app.use(cookieParser());
 app.use(express.urlencoded({ extended: true }));
 app.use(morgan("dev"));
 
-const FRONTEND_URL = process.env.FRONTEND_URL || 'http://localhost:5173';
+const FRONTEND_URLS = [
+  (process.env.FRONTEND_URL || '').replace(/\/$/, ''), // e.g. https://temporary-event.vercel.app
+  'http://localhost:5173',
+].filter(Boolean);
 
 // CORS configuration
 const corsOptions = {
   origin: (origin, cb) => {
     if (!origin) return cb(null, true); // allow server-to-server/tools
-    const whitelist = [
-      FRONTEND_URL, // CMS serving mai domain/origin(not subdomain)
-    ];
-    const DOMAIN_NAME = process.env.DOMAIN_NAME || 'localhost:5173';
-    const isProduction = process.env.NODE_ENV === 'production';
-    const protocol = isProduction ? 'https' : 'http';
-    const port = isProduction ? '' : ':5173';
-    const subdomainRgx = new RegExp(`^${protocol}://[a-z0-9-]+\\.${DOMAIN_NAME.replace('.', '\\.')}${port}$`, 'i');
+    
+    const normalized = origin.replace(/\/$/, '');
+    if (FRONTEND_URLS.includes(normalized)) return cb(null, true);
 
-    if (whitelist.includes(origin) || subdomainRgx.test(origin)) {
-      return cb(null, true);
+    const DOMAIN_NAME = process.env.DOMAIN_NAME;
+    if (DOMAIN_NAME) {
+      const subdomainRgx = new RegExp(`^https://[a-z0-9-]+\\.${DOMAIN_NAME.replace(/\./g, '\\.')}$`, 'i');
+      if (subdomainRgx.test(normalized)) return cb(null, true);
     }
+
     return cb(new Error('CORS blocked'), false);
   },
   credentials: true,

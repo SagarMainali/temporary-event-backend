@@ -182,8 +182,8 @@ const logoutUser = async (req, res) => {
 
   res.clearCookie("refresh_token", {
     httpOnly: true,
-    secure: isProduction,
-    sameSite: isProduction ? "none" : "lax",
+    secure: true,
+    sameSite: "none",
     path: '/',
   });
 
