@@ -24,6 +24,7 @@ app.use(morgan("dev"));
 const FRONTEND_URLS = [
   (process.env.FRONTEND_URL || '').replace(/\/$/, ''), // e.g. https://temporary-event.vercel.app
   'http://localhost:5173',
+  'http://tempevents.local',
 ].filter(Boolean);
 
 // CORS configuration
@@ -34,7 +35,7 @@ const corsOptions = {
     const normalized = origin.replace(/\/$/, '');
     if (FRONTEND_URLS.includes(normalized)) return cb(null, true);
 
-    const DOMAIN_NAME = process.env.DOMAIN_NAME;
+    const DOMAIN_NAME = process.env.DOMAIN_NAME || 'tempevents.local';
     if (DOMAIN_NAME) {
       const subdomainRgx = new RegExp(`^https://[a-z0-9-]+\\.${DOMAIN_NAME.replace(/\./g, '\\.')}$`, 'i');
       if (subdomainRgx.test(normalized)) return cb(null, true);
