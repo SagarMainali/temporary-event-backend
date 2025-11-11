@@ -33,7 +33,7 @@ const corsOptions = {
     const DOMAIN_NAME = process.env.DOMAIN_NAME || 'localhost:5173';
     const isProduction = process.env.NODE_ENV === 'production';
     const protocol = isProduction ? 'https' : 'http';
-    const port = isProduction ? '' : ':3000';
+    const port = isProduction ? '' : ':5173';
     const subdomainRgx = new RegExp(`^${protocol}://[a-z0-9-]+\\.${DOMAIN_NAME.replace('.', '\\.')}${port}$`, 'i');
 
     if (whitelist.includes(origin) || subdomainRgx.test(origin)) {
