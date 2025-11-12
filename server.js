@@ -22,8 +22,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(morgan("dev"));
 
 const FRONTEND_URLS = [
-  (process.env.FRONTEND_URL || '').replace(/\/$/, ''), // e.g. https://temporary-event.vercel.app
-  'http://tempevents.local:5173',
+  process.env.FRONTEND_URL,
 ].filter(Boolean);
 
 // CORS configuration
@@ -31,17 +30,17 @@ const corsOptions = {
   origin: (origin, cb) => {
     if (!origin) return cb(null, true); // allow server-to-server/tools
     
-    const normalized = origin.replace(/\/$/, '');
-    if (FRONTEND_URLS.includes(normalized)) return cb(null, true);
+    if (FRONTEND_URLS.includes(origin)) return cb(null, true);
 
-    // Allow local viewer subdomains like http://{sub}.tempevents.local:3000
+    // Allow local viewer subdomains like http://{sub}.tempevents.local:5174 (for dev mode)
     const localViewerRgx = /^http:\/\/[a-z0-9-]+\.tempevents\.local:5174/i;
-    if (localViewerRgx.test(normalized)) return cb(null, true);
+    if (localViewerRgx.test(origin)) return cb(null, true);
 
+    // (for prod)
     const DOMAIN_NAME = process.env.DOMAIN_NAME;
     if (DOMAIN_NAME) {
       const subdomainRgx = new RegExp(`^https://[a-z0-9-]+\\.${DOMAIN_NAME.replace(/\./g, '\\.')}$`, 'i');
-      if (subdomainRgx.test(normalized)) return cb(null, true);
+      if (subdomainRgx.test(origin)) return cb(null, true);
     }
 
     return cb(new Error('CORS blocked'), false);
