@@ -410,7 +410,7 @@ const publishWebsite = async (req, res) => {
         website.published = true;
         website.subdomain = subdomain;
         const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
-        website.url = `${protocol}://${subdomain.toLowerCase()}.${process.env.DOMAIN_NAME}`;
+        website.url = `${protocol}://${process.env.DOMAIN_NAME}/sites/${subdomain}`;
         await website.save();
 
         return res.status(200).json(
