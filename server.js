@@ -23,8 +23,7 @@ app.use(morgan("dev"));
 
 const FRONTEND_URLS = [
   (process.env.FRONTEND_URL || '').replace(/\/$/, ''), // e.g. https://temporary-event.vercel.app
-  'http://localhost:5173',
-  'http://tempevents.local:3000',
+  'http://tempevents.local:5173',
 ].filter(Boolean);
 
 // CORS configuration
@@ -36,7 +35,7 @@ const corsOptions = {
     if (FRONTEND_URLS.includes(normalized)) return cb(null, true);
 
     // Allow local viewer subdomains like http://{sub}.tempevents.local:3000
-    const localViewerRgx = /^http:\/\/[a-z0-9-]+\.tempevents\.local:3000$/i;
+    const localViewerRgx = /^http:\/\/[a-z0-9-]+\.tempevents\.local:5174/i;
     if (localViewerRgx.test(normalized)) return cb(null, true);
 
     const DOMAIN_NAME = process.env.DOMAIN_NAME;
@@ -72,16 +71,3 @@ app.use("/website", websiteRoutes);
 app.listen(PORT, () => {
   console.log(`API server is running properly✅`);
 });
-
-// backend is hosted on localhost:5000
-// localhost mapping is written in 'hosts' file
-// no cross-origin means the request comes from the same origin where the backend is hosted
-// for eg:
-//          backend is hosted on the domain api.tempevents.local:5000
-//          frontend sends request from same domain like http://api.tempevents.local:5000/test
-// cross-origin means the request comes from different origin from where the backend is hosted
-// for eg:
-//          backend is hosted on the domain api.tempevents.local:5000
-//          frontend sends request from same domain like http://tempevents.local:3000/test (cross-origin)
-// the origin is defined by protocol, domain and port, if one of these don't match with where the backend host, its treated as cross-origin
-// and the CORS needs to be configured accordingly!!!
