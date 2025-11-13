@@ -471,6 +471,55 @@ const getPublicWebsite = async (req, res) => {
     }
 };
 
+// get all publised websites of a particular organizer
+const getPublishedWebsites = async (req, res) => {
+    const userId = req.user.id;
+
+    try {
+        const events = await Event.find({ organizer: userId })
+            .populate({
+                path: 'website',
+                match: {
+                    published: true,
+                    url: { $ne: null },
+                    subdomain: { $ne: null }
+                }
+            });
+
+        if (!events) {
+            const error = new Error("You don't even have any events created yet to have website.");
+            error.statusCode = 404;
+            throw error;
+        }
+
+        const websites = events.map(event => event.website).filter(Boolean);
+
+        if (websites.length === 0) {
+            const error = new Error("No published websites found");
+            error.statusCode = 404;
+            throw error;
+        }
+
+        res.status(200).json(
+            {
+                success: true,
+                message: "Successfully fetched published websites",
+                data: events
+            });
+    } catch (error) {
+        console.error(error);
+
+        const statusCode = error.statusCode || 500;
+        const message = error.message || "Internal server error";
+        res.status(statusCode).json(
+            {
+                success: false,
+                message
+            }
+        );
+    }
+}
+
 // delete website for visitor
 const deleteWebsite = async (req, res) => {
     const userId = req.user.id;
@@ -583,5 +632,6 @@ module.exports = {
     getPublicWebsite,
     deleteWebsite,
     publishWebsite,
+    getPublishedWebsites,
     sendEmailToOrganizer
 }
