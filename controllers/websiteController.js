@@ -492,7 +492,12 @@ const getPublishedWebsites = async (req, res) => {
             throw error;
         }
 
-        const websites = events.map(event => event.website).filter(Boolean);
+        const websites = events.map(({ eventName, website }) => (
+            {
+                eventName,
+                website
+            }
+        )).filter(event => event.website);
 
         if (websites.length === 0) {
             const error = new Error("No published websites found");
@@ -504,7 +509,7 @@ const getPublishedWebsites = async (req, res) => {
             {
                 success: true,
                 message: "Successfully fetched published websites",
-                data: events
+                data: websites
             });
     } catch (error) {
         console.error(error);
