@@ -140,11 +140,13 @@ const checkAuthState = async (req, res) => {
       throw error;
     }
 
+    const { password, ...userWithoutPassword } = user.toObject();
+
     res.status(200).json(
       {
         success: true,
         message: "User is authenticated",
-        data: { ...user.toObject() }
+        data: { ...userWithoutPassword }
       }
     );
   } catch (error) {

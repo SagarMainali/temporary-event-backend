@@ -434,6 +434,51 @@ const publishWebsite = async (req, res) => {
     }
 }
 
+const unpublishWebsite = async (req, res) => {
+    const { websiteId } = req.params;
+
+    try {
+        const website = await Website.findById(websiteId);
+        if (!website) {
+            const error = new Error("Website not found");
+            error.statusCode = 404;
+            throw error;
+        }
+
+        if (!website.published || !website.subdomain || !website.url) {
+            const error = new Error("Website is not published yet");
+            error.statusCode = 400;
+            throw error;
+        }
+
+        website.published = false;
+        website.url = null;
+        website.subdomain = null;
+
+        await website.save();
+
+        return res.status(200).json(
+            {
+                success: true,
+                message: "Website unpublished"
+            }
+        )
+
+    } catch (error) {
+        console.error(error);
+
+        const statusCode = error.statusCode || 500;
+        const message = error.message || "Internal server error";
+        res.status(statusCode).json(
+            {
+                success: false,
+                message
+            }
+        );
+    }
+
+}
+
 // get website for visitor
 const getPublicWebsite = async (req, res) => {
     const { subdomain } = req.params;
@@ -637,6 +682,7 @@ module.exports = {
     getPublicWebsite,
     deleteWebsite,
     publishWebsite,
+    unpublishWebsite,
     getPublishedWebsites,
     sendEmailToOrganizer
 }
