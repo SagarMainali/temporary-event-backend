@@ -379,7 +379,7 @@ const publishWebsite = async (req, res) => {
         const existing = await Website.findOne({ subdomain });
         if (existing) {
             const error = new Error("Subdomain already taken");
-            error.statusCode = 400;
+            error.statusCode = 409;
             throw error;
         }
 
@@ -537,24 +537,18 @@ const getPublishedWebsites = async (req, res) => {
             throw error;
         }
 
-        const websites = events.map(({ eventName, website }) => (
+        const publishedWebsites = events.map(({ eventName, website }) => (
             {
                 eventName,
                 website
             }
         )).filter(event => event.website);
 
-        if (websites.length === 0) {
-            const error = new Error("No published websites found");
-            error.statusCode = 404;
-            throw error;
-        }
-
         res.status(200).json(
             {
                 success: true,
                 message: "Successfully fetched published websites",
-                data: websites
+                data: publishedWebsites
             });
     } catch (error) {
         console.error(error);
