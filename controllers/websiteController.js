@@ -411,8 +411,8 @@ const publishWebsite = async (req, res) => {
         website.published = true;
         website.subdomain = subdomain;
         website.url = process.env.NODE_ENV === 'production'
-            ? `https://${subdomain}.${process.env.DOMAIN_NAME}`
-            : `http://${process.env.DOMAIN_NAME}/sites/${subdomain}`
+            ? `https://${subdomain}.${process.env.DOMAIN_NAME}/`
+            : `http://${process.env.DOMAIN_NAME}/sites/${subdomain}/`
 
         await website.save();
 
