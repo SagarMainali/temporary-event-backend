@@ -289,6 +289,7 @@ const updateSection = async (req, res) => {
 
         const statusCode = error.statusCode || 500;
         const message = error.message || "Internal server error";
+
         res.status(statusCode).json(
             {
                 success: false,
@@ -409,8 +410,10 @@ const publishWebsite = async (req, res) => {
 
         website.published = true;
         website.subdomain = subdomain;
-        const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
-        website.url = `${protocol}://${process.env.DOMAIN_NAME}/sites/${subdomain}`;
+        website.url = process.env.NODE_ENV === 'production'
+            ? `https://${subdomain}.${process.env.DOMAIN_NAME}`
+            : `http://${process.env.DOMAIN_NAME}/sites/${subdomain}`
+
         await website.save();
 
         return res.status(200).json(
