@@ -32,8 +32,8 @@ const corsOptions = {
     
     if (FRONTEND_URLS.includes(origin)) return cb(null, true);
 
-    // Allow local viewer subdomains like http://{sub}.tempevents.local:5174 (for dev mode)
-    const localViewerRgx = /^http:\/\/[a-z0-9-]+\.tempevents\.local:5174/i;
+    // Allow local viewer subdomains like http://{sub}.tempevents.local:5173 (for dev mode)
+    const localViewerRgx = /^http:\/\/[a-z0-9-]+\.tempevents\.local:5173/i;
     if (localViewerRgx.test(origin)) return cb(null, true);
 
     // (for prod)
