@@ -9,19 +9,20 @@ const websiteSectionSchema = new mongoose.Schema(
 
 const websiteSchema = new mongoose.Schema(
     {
-        type: {type: String, default: "website"},
+        type: { type: String, default: "website" },
         belongsToThisEvent: { type: mongoose.Schema.Types.ObjectId, ref: "Event", unique: true },
-        baseTemplate: { type: mongoose.Schema.Types.ObjectId, ref: "Template"},
+        baseTemplate: { type: mongoose.Schema.Types.ObjectId, ref: "Template" },
         sections: [websiteSectionSchema],
         subdomain: { type: String, unique: true, sparse: true },
         published: { type: Boolean, default: false },
-        url: { type: String, unique: true, sparse: true }
+        url: { type: String, default: null },
+        publishedOn: { type: Date, default: null }
     },
     {
         timestamps: true
     }
 );
 
-websiteSchema.index({ subdomain: 1, published: 1 });
+websiteSchema.index({ subdomain: 1, published: 1 }, { partialFilterExpression: { subdomain: { $ne: null } } });
 
 module.exports = mongoose.model("Website", websiteSchema);

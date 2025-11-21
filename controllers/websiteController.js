@@ -395,7 +395,7 @@ const publishWebsite = async (req, res) => {
             throw error;
         }
 
-        if (website.published || website.subdomain || website.url) {
+        if (website.published || website.subdomain || website.url || website.publishedOn) {
             const error = new Error("Website already published");
             error.statusCode = 400;
             throw error;
@@ -413,6 +413,7 @@ const publishWebsite = async (req, res) => {
 
         const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
         website.url = `${protocol}://${subdomain}.${process.env.DOMAIN_NAME}`
+        website.publishedOn = new Date()
 
         await website.save();
 
@@ -448,7 +449,7 @@ const unpublishWebsite = async (req, res) => {
             throw error;
         }
 
-        if (!website.published || !website.subdomain || !website.url) {
+        if (!website.published || !website.subdomain || !website.url || !website.publishedOn) {
             const error = new Error("Website is not published yet");
             error.statusCode = 400;
             throw error;
@@ -457,6 +458,7 @@ const unpublishWebsite = async (req, res) => {
         website.published = false;
         website.url = null;
         website.subdomain = null;
+        website.publishedOn = null;
 
         await website.save();
 
@@ -531,6 +533,10 @@ const getPublishedWebsites = async (req, res) => {
                     published: true,
                     url: { $ne: null },
                     subdomain: { $ne: null }
+                },
+                populate: {
+                    path: 'baseTemplate',
+                    select: 'templateName'
                 }
             });
 
