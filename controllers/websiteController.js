@@ -642,7 +642,7 @@ const sendEmailToOrganizer = async (req, res) => {
     const formData = req.body;
 
     try {
-        if (!formData.viewerEmail) {
+        if (!formData.visitorEmail) {
             const error = new Error("Please provide your email address");
             error.statusCode = 400;
             throw error;
