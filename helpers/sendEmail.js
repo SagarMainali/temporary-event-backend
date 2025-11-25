@@ -1,7 +1,7 @@
-const { sgMail, senderEmailAddress } = require('../config/sendgrid');
+const { transporter, senderEmailAddress } = require('../config/nodemailer');
 
 async function sendEmail(formData) {
-  const { firstname, lastname, phone, description, viewerEmail, organizerEmail } = formData;
+  const { firstname, lastname, phone, description, visitorEmail, organizerEmail } = formData;
 
   const html = `
     <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f4f6f9; padding: 20px;">
@@ -25,7 +25,7 @@ async function sendEmail(formData) {
           </tr>
           <tr>
             <td style="padding: 10px; font-weight: bold; background-color: #f9f9f9;">Email</td>
-            <td style="padding: 10px;">${viewerEmail}</td>
+            <td style="padding: 10px;">${visitorEmail}</td>
           </tr>
           <tr>
             <td style="padding: 10px; font-weight: bold; background-color: #ffffff;">Phone</td>
@@ -46,23 +46,20 @@ async function sendEmail(formData) {
   </div>
   `;
 
-  const msg = {
-    to: organizerEmail,
+  const mailOptions = {
     from: senderEmailAddress,
-    replyTo: viewerEmail,
+    to: organizerEmail,
+    replyTo: visitorEmail,
     subject: `Query from ${firstname}`,
     html,
   };
 
   try {
-    const response = await sgMail.send(msg);
+    const response = await transporter.sendMail(mailOptions);
     console.log('Email sent successfully:', response);
   } catch (err) {
     console.error('Failed to send email:', err);
-
-    const error = new Error("Failed to send email");
-    error.statusCode = err.code || 500;
-    throw error;
+    throw new Error("Failed to send email");
   }
 }
 

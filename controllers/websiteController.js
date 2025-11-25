@@ -109,7 +109,7 @@ const getWebsite = async (req, res) => {
         const website = await Website.findById(websiteId)
             .populate({
                 path: "belongsToThisEvent",
-                select: "eventName organizer",
+                select: "eventName organizer email",
             })
             .populate({
                 path: "baseTemplate",
@@ -660,7 +660,7 @@ const sendEmailToOrganizer = async (req, res) => {
         res.status(200).json(
             {
                 success: true,
-                message: "Thank you for reaching out! We’ve received your email and will get back to you as soon as possible",
+                message: "Email sent successfully",
             });
     } catch (error) {
         console.error(error);

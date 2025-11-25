@@ -1,7 +1,7 @@
 const User = require("../models/userModel");
 const { hashedPassword, comparePassword, generateToken, verifyToken } = require("../middleware/auth");
 const bcrypt = require("bcryptjs");
-const { sgMail, senderEmailAddress } = require("../config/sendgrid");
+const { sgMail, senderEmailAddress } = require("../config/nodemailer");
 const validator = require("validator");
 
 // register new user/event organizer
