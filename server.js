@@ -29,18 +29,18 @@ const FRONTEND_URLS = [
 const corsOptions = {
   origin: (origin, cb) => {
     if (!origin) return cb(null, true); // allow server-to-server/tools
-    
+
+    // allow request from main domain for both dev and prod
     if (FRONTEND_URLS.includes(origin)) return cb(null, true);
 
-    // Allow local viewer subdomains like http://{sub}.tempevents.local:5173 (for dev mode)
-    const localViewerRgx = /^http:\/\/[a-z0-9-]+\.tempevents\.local:5173/i;
-    if (localViewerRgx.test(origin)) return cb(null, true);
+    const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
+    const domain = process.env.DOMAIN_NAME;
 
-    // (for prod)
-    const DOMAIN_NAME = process.env.DOMAIN_NAME;
-    if (DOMAIN_NAME) {
-      const subdomainRgx = new RegExp(`^https://[a-z0-9-]+\\.${DOMAIN_NAME.replace(/\./g, '\\.')}$`, 'i');
-      if (subdomainRgx.test(origin)) return cb(null, true);
+    // allow subdomain request for both dev and prod
+    const subdomainRgx = new RegExp(`^${protocol}://[a-z0-9-]+\\.${domain.replace(/\./g, '\\.')}$`, 'i');
+
+    if (subdomainRgx.test(origin)) {
+      return cb(null, true);
     }
 
     return cb(new Error('CORS blocked'), false);
