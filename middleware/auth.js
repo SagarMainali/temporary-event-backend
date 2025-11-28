@@ -15,11 +15,18 @@ const authenticate = async (req, res, next) => {
     }
 
     // Verify the access token
-    const decoded = verifyToken(accessToken, process.env.JWT_SECRET_ACCESS);
-    req.user = decoded;
+    const result = verifyToken(accessToken, process.env.JWT_SECRET_ACCESS);
+    if (!result?.valid) {
+      // If the token is invalid or expired, handle the error (e.g., return 401)
+      const error = new Error(result.error);
+      error.statusCode = result.status;
+      throw error;
+    }
+
+    req.user = result.payload; // if verified, the return obj contains payload prop
 
     // Check if the user exists in the database
-    const user = await User.findById(decoded.id);
+    const user = await User.findById(req.user?.id);
     if (!user) {
       const error = new Error("User doesn't exist!");
       error.statusCode = 404;
@@ -76,9 +83,16 @@ const generateToken = (id, secret, duration) => {
 
 const verifyToken = (token, secret) => {
   try {
-    return jwt.verify(token, secret);
+    const decoded = jwt.verify(token, secret);
+    return { status: 200, valid: true, payload: decoded };
   } catch (error) {
-    return null; // If token is invalid or expired
+    if (error.name === 'TokenExpiredError') {
+      return { status: 401, valid: false, error: 'Token has expired' };
+    }
+    if (error.name === 'JsonWebTokenError') {
+      return { status: 401, valid: false, error: 'Invalid token' };
+    }
+    return { status: 500, valid: false, error: 'Token verification failed' };
   }
 };
 

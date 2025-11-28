@@ -83,9 +83,8 @@ const loginUser = async (req, res) => {
         .send({ success: false, message: "Incorrect password" });
     }
 
-    // both tokens expires after 7days, needs to be changes in production mode
-    const accessToken = generateToken(user._id, process.env.JWT_SECRET_ACCESS, "7d");
-    const refreshToken = generateToken(user._id, process.env.JWT_SECRET_REFRESH, "7d");
+    const accessToken = generateToken(user._id, process.env.JWT_SECRET_ACCESS, "15m");
+    const refreshToken = generateToken(user._id, process.env.JWT_SECRET_REFRESH, "30d");
 
     const updatedUser = await User.findByIdAndUpdate(
       user._id,
@@ -317,12 +316,17 @@ const refreshAccessToken = async (req, res) => {
     }
 
     // verify refresh token
-    const decoded = verifyToken(refreshToken, process.env.JWT_SECRET_REFRESH);
-    const userId = decoded.id;
+    const result = verifyToken(refreshToken, process.env.JWT_SECRET_REFRESH);
+    if (!result?.valid) {
+      // If the token is invalid or expired, handle the error (e.g., return 401)
+      const error = new Error(result.error);
+      error.statusCode = result.status;
+      throw error;
+    }
 
-    // 7d for test only, must change expiry duration for production mode
-    const newAccessToken = generateToken(userId, process.env.JWT_SECRET_ACCESS, "7d");
+    const userId = result.payload.id;
 
+    const newAccessToken = generateToken(userId, process.env.JWT_SECRET_ACCESS, "15m");
 
     res.cookie("access_token", newAccessToken, {
       httpOnly: true,
