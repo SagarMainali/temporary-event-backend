@@ -92,17 +92,28 @@ const loginUser = async (req, res) => {
       { new: true }
     );
 
-    // might need separate config for dev/prod
-    const COOKIE = {
+    // common shared cookie config
+    const commonCookieConfig = {
       httpOnly: true,
       secure: true,
       sameSite: 'none',
       path: '/',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+    }
+
+    // ACCESS TOKEN
+    const AT_COOKIE = {
+      ...commonCookieConfig,
+      maxAge: 15 * 60 * 1000,
     };
 
-    res.cookie('access_token', accessToken, COOKIE);
-    res.cookie('refresh_token', refreshToken, COOKIE);
+    // REFRESH TOKEN
+    const RT_COOKIE = {
+      ...commonCookieConfig,
+      maxAge: 30 * 24 * 60 * 60 * 1000,
+    };
+
+    res.cookie('access_token', accessToken, AT_COOKIE);
+    res.cookie('refresh_token', refreshToken, RT_COOKIE);
 
     const { password, ...userWithoutPassword } = updatedUser.toObject();
 
@@ -174,19 +185,16 @@ const logoutUser = async (req, res) => {
   user.refreshToken = null;
   await user.save();
 
-  res.clearCookie("access_token", {
+  const cookieOptions = {
     httpOnly: true,
     secure: true,
     sameSite: "none",
     path: '/',
-  });
+  }
 
-  res.clearCookie("refresh_token", {
-    httpOnly: true,
-    secure: true,
-    sameSite: "none",
-    path: '/',
-  });
+  // clear both cookies
+  res.clearCookie("access_token", cookieOptions);
+  res.clearCookie("refresh_token", cookieOptions);
 
   return res.status(200).json({
     success: true,
@@ -333,7 +341,7 @@ const refreshAccessToken = async (req, res) => {
       secure: true,
       sameSite: "none",
       path: '/',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+      maxAge: 15 * 60 * 1000,
     });
 
     res.status(200).json({
