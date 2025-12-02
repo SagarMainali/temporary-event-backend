@@ -1,6 +1,5 @@
 const User = require("../models/userModel");
-const { hashedPassword, comparePassword, generateToken, verifyToken } = require("../middleware/auth");
-const bcrypt = require("bcryptjs");
+const { generateHashedPassword, comparePassword, generateToken, verifyToken } = require("../utils/utils");
 const { senderEmailAddress, transporter } = require("../config/nodemailer");
 const validator = require("validator");
 
@@ -32,7 +31,7 @@ const registerUser = async (req, res) => {
         .send({ success: false, message: "Email is already registered" });
     }
 
-    const hashPassword = await hashedPassword(password);
+    const hashPassword = await generateHashedPassword(password);
 
     User.create({
       username,
@@ -201,7 +200,7 @@ const resetPassword = async (req, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const hashedPassword = await generateHashedPassword(newPassword);
 
     user.password = hashedPassword;
     await user.save();
@@ -228,12 +227,12 @@ const changePassword = async (req, res) => {
       return res.status(404).json({ success: false, message: "User not found" });
     }
 
-    const isMatch = await bcrypt.compare(oldPassword, user.password);
+    const isMatch = await comparePassword(oldPassword, user.password);
     if (!isMatch) {
       return res.status(401).json({ success: false, message: "Old password is incorrect" });
     }
 
-    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    const hashedPassword = await generateHashedPassword(newPassword);
 
     user.password = hashedPassword;
     await user.save();
