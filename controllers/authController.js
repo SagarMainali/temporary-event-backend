@@ -51,8 +51,7 @@ const registerUser = async (req, res) => {
     res.status(500).json(
       {
         success: false,
-        message: "An error occurred during registration",
-        error: error.message || error,
+        message: "An error occurred during registration"
       }
     );
   }
@@ -84,46 +83,23 @@ const loginUser = async (req, res) => {
     }
 
     const accessToken = generateToken(user._id, process.env.JWT_SECRET_ACCESS, "15m");
-    const refreshToken = generateToken(user._id, process.env.JWT_SECRET_REFRESH, "30d");
+    const refreshToken = generateToken(user._id, process.env.JWT_SECRET_REFRESH, "7d");
 
-    const updatedUser = await User.findByIdAndUpdate(
-      user._id,
-      { refreshToken },
-      { new: true }
-    );
-
-    // common shared cookie config
-    const commonCookieConfig = {
+    const cookieConfig = {
       httpOnly: true,
       secure: true,
       sameSite: 'none',
       path: '/',
+      maxAge: 7 * 24 * 60 * 60 * 1000
     }
 
-    // ACCESS TOKEN
-    const AT_COOKIE = {
-      ...commonCookieConfig,
-      maxAge: 15 * 60 * 1000,
-    };
-
-    // REFRESH TOKEN
-    const RT_COOKIE = {
-      ...commonCookieConfig,
-      maxAge: 30 * 24 * 60 * 60 * 1000,
-    };
-
-    res.cookie('access_token', accessToken, AT_COOKIE);
-    res.cookie('refresh_token', refreshToken, RT_COOKIE);
-
-    const { password, ...userWithoutPassword } = updatedUser.toObject();
+    res.cookie('access_token', accessToken, cookieConfig);
+    res.cookie('refresh_token', refreshToken, cookieConfig);
 
     res.status(200).json(
       {
         success: true,
-        message: "Successfully logged in",
-        data: {
-          ...userWithoutPassword
-        }
+        message: "Successfully logged in"
       }
     );
   } catch (error) {
@@ -132,43 +108,21 @@ const loginUser = async (req, res) => {
       {
         success: false,
         message: "Login failed",
-        error
       }
     );
   }
 };
 
 // verify access token to acknowledge user auth state
-const checkAuthState = async (req, res) => {
-  const userId = req.user.id;
+const checkAuthState = async (_, res) => {
+  // the middleware already verifies the user authentication
 
-  try {
-    const user = await User.findById(userId);
-    if (!user) {
-      const error = new Error("User doesn't exist!");
-      error.statusCode = 404;
-      throw error;
+  res.status(200).json(
+    {
+      success: true,
+      message: "User is authenticated"
     }
-
-    const { password, ...userWithoutPassword } = user.toObject();
-
-    res.status(200).json(
-      {
-        success: true,
-        message: "User is authenticated",
-        data: { ...userWithoutPassword }
-      }
-    );
-  } catch (error) {
-    console.log(error);
-    res.status(500).json(
-      {
-        success: false,
-        message: "User authentication failed",
-        error
-      }
-    );
-  }
+  );
 };
 
 // logout user by clearing tokens stored in cookies
@@ -182,10 +136,9 @@ const logoutUser = async (req, res) => {
     throw error;
   }
 
-  user.refreshToken = null;
   await user.save();
 
-  const cookieOptions = {
+  const cookieConfig = {
     httpOnly: true,
     secure: true,
     sameSite: "none",
@@ -193,8 +146,8 @@ const logoutUser = async (req, res) => {
   }
 
   // clear both cookies
-  res.clearCookie("access_token", cookieOptions);
-  res.clearCookie("refresh_token", cookieOptions);
+  res.clearCookie("access_token", cookieConfig);
+  res.clearCookie("refresh_token", cookieConfig);
 
   return res.status(200).json({
     success: true,
@@ -341,7 +294,7 @@ const refreshAccessToken = async (req, res) => {
       secure: true,
       sameSite: "none",
       path: '/',
-      maxAge: 15 * 60 * 1000,
+      maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
     res.status(200).json({
