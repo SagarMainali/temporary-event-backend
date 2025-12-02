@@ -23,15 +23,16 @@ const authenticate = async (req, res, next) => {
       throw error;
     }
 
-    req.user = result.payload; // if verified, the return obj contains payload prop
-
     // Check if the user exists in the database
-    const user = await User.findById(req.user?.id);
+    const user = await User.findById(result.payload?.id);
     if (!user) {
       const error = new Error("User doesn't exist!");
       error.statusCode = 404;
       throw error;
     }
+
+    // attach user id on req.user obj 
+    req.user = result.payload;
 
     // If everything is good, proceed to next middleware/api
     next();

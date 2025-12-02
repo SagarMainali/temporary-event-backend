@@ -126,18 +126,7 @@ const checkAuthState = async (_, res) => {
 };
 
 // logout user by clearing tokens stored in cookies
-const logoutUser = async (req, res) => {
-  const userId = req.user.id;
-
-  const user = await User.findById(userId);
-  if (!user) {
-    const error = new Error("User doesn't exist!");
-    error.statusCode = 404;
-    throw error;
-  }
-
-  await user.save();
-
+const logoutUser = async (_, res) => {
   const cookieConfig = {
     httpOnly: true,
     secure: true,
