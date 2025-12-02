@@ -50,38 +50,6 @@ const authenticate = async (req, res, next) => {
   }
 };
 
-const hashedPassword = async (password) => {
-  try {
-    const saltRounds = 10;
-    const hashedPassword = await bcrypt.hash(password, saltRounds);
-    return hashedPassword;
-  } catch (err) {
-    console.log(err);
-  }
-};
-
-const comparePassword = async (password, hashedPassword) => {
-  try {
-    const match = await bcrypt.compare(password, hashedPassword);
-    return match;
-  } catch (err) {
-    console.log(err);
-  }
-};
-
-const generateToken = (id, secret, duration) => {
-  try {
-    const token = jwt.sign(
-      { id },
-      secret,
-      { expiresIn: duration, }
-    );
-    return token;
-  } catch (err) {
-    console.log(err);
-  }
-};
-
 const verifyToken = (token, secret) => {
   try {
     const decoded = jwt.verify(token, secret);
@@ -97,13 +65,38 @@ const verifyToken = (token, secret) => {
   }
 };
 
-const admin = (req, res, next) => {
-  if (req.user && req.user.role === "admin") {
-    next();
-  } else {
-    res
-      .status(403)
-      .send({ success: false, message: "Not authorized as an admin" });
+const generateToken = (id, secret, duration) => {
+  try {
+    const token = jwt.sign(
+      { id },
+      secret,
+      { expiresIn: duration, }
+    );
+    return token;
+  } catch (err) {
+    console.log("🚀 ~ generateToken ~ err:", err)
+    return null
+  }
+};
+
+const hashedPassword = async (password) => {
+  try {
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+    return hashedPassword;
+  } catch (err) {
+    console.log("🚀 ~ hashedPassword ~ err:", err)
+    return null
+  }
+};
+
+const comparePassword = async (password, hashedPassword) => {
+  try {
+    const match = await bcrypt.compare(password, hashedPassword);
+    return match;
+  } catch (err) {
+    console.log("🚀 ~ comparePassword ~ err:", err)
+    return false
   }
 };
 
@@ -113,5 +106,4 @@ module.exports = {
   comparePassword,
   generateToken,
   verifyToken,
-  admin,
 };
