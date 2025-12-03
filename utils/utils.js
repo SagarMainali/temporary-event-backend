@@ -9,8 +9,8 @@ const generateToken = (id, secret, duration) => {
             { expiresIn: duration, }
         );
         return token;
-    } catch (err) {
-        console.log("🚀 ~ generateToken ~ err:", err)
+    } catch (error) {
+        console.log("🚀 ~ generateToken ~ error:", error)
         return null
     }
 };
@@ -18,15 +18,15 @@ const generateToken = (id, secret, duration) => {
 const verifyToken = (token, secret) => {
     try {
         const decoded = jwt.verify(token, secret);
-        return { status: 200, valid: true, payload: decoded };
+        return { statusCode: 200, valid: true, payload: decoded };
     } catch (error) {
         if (error.name === 'TokenExpiredError') {
-            return { status: 401, valid: false, error: 'Token has expired' };
+            return { statusCode: 401, valid: false, errorMessage: 'Token has expired' };
         }
         if (error.name === 'JsonWebTokenError') {
-            return { status: 401, valid: false, error: 'Invalid token' };
+            return { statusCode: 401, valid: false, errorMessage: 'Invalid token' };
         }
-        return { status: 500, valid: false, error: 'Token verification failed' };
+        return { statusCode: 500, valid: false, errorMessage: 'Token verification failed' };
     }
 };
 
@@ -35,8 +35,8 @@ const generateHashedPassword = async (password) => {
         const saltRounds = 10;
         const hashedPassword = await bcrypt.hash(password, saltRounds);
         return hashedPassword;
-    } catch (err) {
-        console.log("🚀 ~ hashedPassword ~ err:", err)
+    } catch (error) {
+        console.log("🚀 ~ hashedPassword ~ error:", error)
         return null
     }
 };
@@ -45,15 +45,52 @@ const comparePassword = async (password, hashedPassword) => {
     try {
         const match = await bcrypt.compare(password, hashedPassword);
         return match;
-    } catch (err) {
-        console.log("🚀 ~ comparePassword ~ err:", err)
+    } catch (error) {
+        console.log("🚀 ~ comparePassword ~ error:", error)
         return false
     }
+};
+
+// throw error to catch block
+const throwError = (statusCode, errorMessage) => {
+    const error = new Error(errorMessage);
+    error.statusCode = statusCode;
+    throw error;
+}
+
+// return error response
+const handleErrorResponse = (res, error) => {
+    console.log("🚀 ~ handleErrorResponse ~ error:", error)
+
+    const statusCode = error.statusCode || 500;
+    const message = error.message || "Internal server error";
+
+    res.status(statusCode).json({
+        success: false,
+        message
+    });
+};
+
+// return success response
+const handleSuccessResponse = (res, statusCode, message, data = null) => {
+    const response = {
+        success: true,
+        message
+    }
+
+    if (data) {
+        response.data = data;
+    }
+
+    res.status(statusCode).json(response);
 };
 
 module.exports = {
     generateHashedPassword,
     comparePassword,
     generateToken,
-    verifyToken
+    verifyToken,
+    throwError,
+    handleErrorResponse,
+    handleSuccessResponse
 };

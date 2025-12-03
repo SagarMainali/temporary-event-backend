@@ -1,7 +1,8 @@
 const mongoose = require("mongoose");
 const Event = require("../models/eventModel.js");
 const User = require("../models/userModel.js");
-const Website = require("../models/websiteModel.js")
+const Website = require("../models/websiteModel.js");
+const { handleSuccessResponse, handleErrorResponse, throwError } = require("../utils/utils.js");
 
 // create new event
 const createEvent = async (req, res) => {
@@ -31,27 +32,12 @@ const createEvent = async (req, res) => {
         // Commit the transaction if both operations succeed
         await session.commitTransaction();
 
-        res.status(201).json(
-            {
-                success: true,
-                message: "Successfully created event",
-                data: event[0],
-            }
-        );
+        handleSuccessResponse(res, 201, "Successfully created event", event[0])
     } catch (error) {
         // if any one db operation fails
         await session.abortTransaction();
 
-        console.error(error);
-
-        const statusCode = error.statusCode || 500;
-        const message = error.message || "Internal server error";
-        res.status(statusCode).json(
-            {
-                success: false,
-                message
-            }
-        );
+        handleErrorResponse(res, error)
     } finally {
         session.endSession();
     }
@@ -69,21 +55,9 @@ const getUserEvents = async (req, res) => {
             })
             .sort({ createdAt: -1 }); // newest first
 
-        res.status(200).json(
-            {
-                success: true,
-                message: "Successfully fetched user events",
-                data: events,
-            }
-        );
+        handleSuccessResponse(res, 200, "Successfully fetched events", events)
     } catch (error) {
-        console.error("Error fetching user events:", error);
-        res.status(500).json(
-            {
-                success: false,
-                message: "Failed to fetch user events"
-            }
-        );
+        handleErrorResponse(res, error)
     }
 };
 
@@ -100,26 +74,17 @@ const getSingleEvent = async (req, res) => {
             });
 
         if (!event) {
-            return res.status(404).json({ success: false, message: "Event not found" });
+            throwError(404, "Event not found")
         }
 
         // Ownership check
         if (event.organizer.toString() !== userId) {
-            return res.status(403).json({ success: false, message: "Not authorized to view this event" });
+            throwError(403, "Unauthorized to view this event")
         }
 
-        res.status(200).json(
-            {
-                success: true,
-                data: event
-            });
+        handleSuccessResponse(res, 200, "Successfully fetched event", event)
     } catch (error) {
-        console.error("Error fetching single event:", error);
-        res.status(500).json(
-            {
-                success: false,
-                message: "Failed to fetch event"
-            });
+        handleErrorResponse(res, error)
     }
 };
 
@@ -132,16 +97,12 @@ const updateEvent = async (req, res) => {
     try {
         const event = await Event.findById(eventId);
         if (!event) {
-            const error = new Error('Event not found');
-            error.statusCode = 404;
-            throw error;
+            throwError(404, "Event not found")
         }
 
         // Ownership check
         if (event.organizer.toString() !== userId) {
-            const error = new Error('Not authorized to edit this event');
-            error.statusCode = 403;
-            throw error;
+            throwError(403, "Unauthorized to edit this event")
         }
 
         const updatedEvent = await Event.findByIdAndUpdate(eventId, updates, {
@@ -149,24 +110,9 @@ const updateEvent = async (req, res) => {
             runValidators: true,
         });
 
-        res.status(200).json(
-            {
-                success: true,
-                message: "Event updated successfully",
-                data: updatedEvent
-            }
-        );
+        handleSuccessResponse(res, 200, "Successfully updated event", updatedEvent)
     } catch (error) {
-        console.error(error);
-
-        const statusCode = error.statusCode || 500;
-        const message = error.message || "Internal server error";
-        res.status(statusCode).json(
-            {
-                success: false,
-                message
-            }
-        );
+        handleErrorResponse(res, error)
     }
 };
 
@@ -181,15 +127,11 @@ const deleteEvent = async (req, res) => {
     try {
         const event = await Event.findById(eventId).session(session);
         if (!event) {
-            const error = new Error('Event not found');
-            error.statusCode = 404;
-            throw error;
+            throwError(404, "Event not found")
         }
 
         if (event.organizer.toString() !== userId) {
-            const error = new Error('User not authorized to perform this operation');
-            error.statusCode = 403;
-            throw error;
+            throwError(403, "Unauthorized to delete this event")
         }
 
         // delete linked website if ever created
@@ -203,26 +145,12 @@ const deleteEvent = async (req, res) => {
 
         await session.commitTransaction();
 
-        res.status(200).json(
-            {
-                success: true,
-                message: "Event and linked website deleted successfully"
-            }
-        );
+        handleSuccessResponse(res, 200, "Successfully deleted event and linked website")
     } catch (error) {
-        // if any one db operation fails
+        // if any one db operation fails, abort the whole operation
         await session.abortTransaction();
 
-        console.error(error);
-
-        const statusCode = error.statusCode || 500;
-        const message = error.message || "Internal server error";
-        res.status(statusCode).json(
-            {
-                success: false,
-                message
-            }
-        );
+        handleErrorResponse(res, error)
     } finally {
         session.endSession();
     }

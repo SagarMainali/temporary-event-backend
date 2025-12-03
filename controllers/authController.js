@@ -1,5 +1,5 @@
 const User = require("../models/userModel");
-const { generateHashedPassword, comparePassword, generateToken, verifyToken } = require("../utils/utils");
+const { generateHashedPassword, comparePassword, generateToken, verifyToken, throwError, handleSuccessResponse, handleErrorResponse } = require("../utils/utils");
 const { senderEmailAddress, transporter } = require("../config/nodemailer");
 const validator = require("validator");
 
@@ -7,28 +7,21 @@ const validator = require("validator");
 const registerUser = async (req, res) => {
   try {
     const { username, email, password } = req.body;
-    console.log('Incoming request for registering new user:\n', req.body);
+    console.log("Incoming request for registering new user:\n", req.body);
 
-    // basic validation
     if (!username || !email || !password) {
-      return res.status(400).send({
-        error: "Username, email, and password are required",
-      });
+      throwError(400, "Required: ssername, email & password")
     }
     if (!validator.isEmail(email)) {
-      return res.status(400).send({ error: "Invalid email format" });
+      throwError(400, "Invalid format: email")
     }
     if (password.length < 8) {
-      return res
-        .status(400)
-        .send({ error: "Password must be at least 8 characters" });
+      throwError(400, "Password must be at least 8 characters")
     }
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res
-        .status(400)
-        .send({ success: false, message: "Email is already registered" });
+      throwError(409, "Email already registered")
     }
 
     const hashPassword = await generateHashedPassword(password);
@@ -39,20 +32,9 @@ const registerUser = async (req, res) => {
       password: hashPassword,
     });
 
-    res.status(201).json(
-      {
-        success: true,
-        message: 'You have been registered. Please proceed to login.'
-      }
-    );
+    handleSuccessResponse(res, 201, "Successfully registered user")
   } catch (error) {
-    console.error(error);
-    res.status(500).json(
-      {
-        success: false,
-        message: "An error occurred during registration"
-      }
-    );
+    handleErrorResponse(res, error)
   }
 };
 
@@ -62,23 +44,17 @@ const loginUser = async (req, res) => {
     const { email, password: userPassword } = req.body;
 
     if (!email || !userPassword) {
-      return res
-        .status(400)
-        .send({ success: false, message: "Email and Password are required" });
+      throwError(400, "Required: email & password")
     }
 
     const user = await User.findOne({ email });
     if (!user) {
-      return res
-        .status(404)
-        .send({ success: false, message: "User not registered yet" });
+      throwError(404, "User not registered")
     }
 
     const isPasswordMatch = await comparePassword(userPassword, user.password);
     if (!isPasswordMatch) {
-      return res
-        .status(400)
-        .send({ success: false, message: "Incorrect password" });
+      throwError(401, "Incorrect Password")
     }
 
     const accessToken = generateToken(user._id, process.env.JWT_SECRET_ACCESS, "15m");
@@ -95,33 +71,16 @@ const loginUser = async (req, res) => {
     res.cookie('access_token', accessToken, cookieConfig);
     res.cookie('refresh_token', refreshToken, cookieConfig);
 
-    res.status(200).json(
-      {
-        success: true,
-        message: "Successfully logged in"
-      }
-    );
+    handleSuccessResponse(res, 200, "Successfully logged in")
   } catch (error) {
-    console.log(error);
-    res.status(500).json(
-      {
-        success: false,
-        message: "Login failed",
-      }
-    );
+    handleErrorResponse(res, error)
   }
 };
 
 // verify access token to acknowledge user auth state
 const checkAuthState = async (_, res) => {
   // the middleware already verifies the user authentication
-
-  res.status(200).json(
-    {
-      success: true,
-      message: "User is authenticated"
-    }
-  );
+  handleSuccessResponse(res, 200, "User authenticated")
 };
 
 // logout user by clearing tokens stored in cookies
@@ -137,10 +96,7 @@ const logoutUser = async (_, res) => {
   res.clearCookie("access_token", cookieConfig);
   res.clearCookie("refresh_token", cookieConfig);
 
-  return res.status(200).json({
-    success: true,
-    message: "Logged out successfully",
-  });
+  handleSuccessResponse(res, 200, "Successfully logged out")
 }
 
 // send reset-password-url in email to user
@@ -149,19 +105,19 @@ const forgotPassword = async (req, res) => {
 
   try {
     if (!email) {
-      res.status(404).json({ success: false, message: "Please provide email address" })
+      throwError(400, "Required: email")
     }
 
     const user = await User.findOne({ email });
 
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      throwError(404, "User not found")
     }
 
     const resetToken = generateToken(user._id, process.env.JWT_SECRET_ACCESS, "5m");
 
     if (!resetToken) {
-      return res.status(500).json({ success: false, message: "Failed to generate reset token" });
+      throwError(500, "Failed to generate reset token")
     }
 
     const resetUrl = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
@@ -177,10 +133,9 @@ const forgotPassword = async (req, res) => {
     const response = await transporter.sendMail(mailOptions);
     console.log("Password reset email sent:", response);
 
-    res.status(200).json({ success: true, message: "Password reset email sent", resetUrl });
+    handleSuccessResponse(res, 200, "Successfully sent password reset email")
   } catch (error) {
-    console.error("Error sending password reset email:", error);
-    res.status(500).json({ success: false, message: "Failed to send email" });
+    handleErrorResponse(res, error)
   }
 };
 
@@ -192,12 +147,12 @@ const resetPassword = async (req, res) => {
 
   try {
     if (!newPassword) {
-      return res.status(404).json({ message: "Enter new password" });
+      throwError(400, "Required: newPassword")
     }
 
     const user = await User.findById(userId);
     if (!user) {
-      return res.status(404).json({ message: "User not found" });
+      throwError(404, "User not found")
     }
 
     const hashedPassword = await generateHashedPassword(newPassword);
@@ -205,10 +160,9 @@ const resetPassword = async (req, res) => {
     user.password = hashedPassword;
     await user.save();
 
-    res.status(200).json({ message: "Password reset successfully" });
+    handleSuccessResponse(res, 200, "Successfully reset password")
   } catch (error) {
-    console.error("Error resetting password:", error);
-    res.status(500).json({ message: "Failed to reset password" });
+    handleErrorResponse(res, error)
   }
 };
 
@@ -219,17 +173,17 @@ const changePassword = async (req, res) => {
 
   try {
     if (!oldPassword || !newPassword) {
-      return res.status(400).json({ success: false, message: "Both old and new passwords are required" });
+      throwError(400, "Required: oldPassword & newPassword")
     }
 
     const user = await User.findById(userId);
     if (!user) {
-      return res.status(404).json({ success: false, message: "User not found" });
+      throwError(404, "User not found")
     }
 
     const isMatch = await comparePassword(oldPassword, user.password);
     if (!isMatch) {
-      return res.status(401).json({ success: false, message: "Old password is incorrect" });
+      throwError(400, "Incorrect old password")
     }
 
     const hashedPassword = await generateHashedPassword(newPassword);
@@ -237,20 +191,9 @@ const changePassword = async (req, res) => {
     user.password = hashedPassword;
     await user.save();
 
-    return res.status(200).json(
-      {
-        success: true,
-        message: "Password has been updated successfully",
-      }
-    );
+    handleSuccessResponse(res, 200, "Successfully updated password")
   } catch (error) {
-    console.error("Error in resetPassword:", error);
-    return res.status(500).json(
-      {
-        success: false,
-        message: "Internal server error"
-      }
-    );
+    handleErrorResponse(res, error)
   }
 };
 
@@ -261,18 +204,14 @@ const refreshAccessToken = async (req, res) => {
   try {
     const refreshToken = req.cookies.refresh_token;
     if (!refreshToken) {
-      const error = new Error(errorMessage);
-      error.statusCode = 403;
-      throw error;
+      throwError(403, errorMessage)
     }
 
     // verify refresh token
     const result = verifyToken(refreshToken, process.env.JWT_SECRET_REFRESH);
     if (!result?.valid) {
       // If the token is invalid or expired, handle the error (e.g., return 401)
-      const error = new Error(result.error);
-      error.statusCode = result.status;
-      throw error;
+      throwError(result.statusCode, result.errorMessage)
     }
 
     const userId = result.payload.id;
@@ -287,21 +226,9 @@ const refreshAccessToken = async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    res.status(200).json({
-      success: true,
-      message: "Access token refreshed",
-    });
+    handleSuccessResponse(res, 200, "Successfully refreshed access token")
   } catch (error) {
-    console.error(error);
-
-    const statusCode = error.statusCode || 500;
-    const message = error.message || "Internal server error";
-    res.status(statusCode).json(
-      {
-        success: false,
-        message
-      }
-    );
+    handleErrorResponse(res, error)
   }
 };
 

@@ -5,6 +5,7 @@ const Website = require("../models/websiteModel.js");
 const sendEmail = require("../helpers/sendEmail");
 const { uploadToCloudinary, deleteFromCloudinary } = require("../helpers/cloudinary.js");
 const _ = require("lodash");
+const { throwError, handleSuccessResponse, handleErrorResponse } = require("../utils/utils.js");
 
 // clone website from template(your first website)
 const cloneWebsiteFromTemplate = async (req, res) => {
@@ -15,16 +16,8 @@ const cloneWebsiteFromTemplate = async (req, res) => {
         const userId = req.user.id;
         const { eventId, templateId } = req.body;
 
-        if (!eventId) {
-            const error = new Error('EventId is missing');
-            error.statusCode = 400;
-            throw error;
-        }
-
-        if (!templateId) {
-            const error = new Error('TemplateId is missing');
-            error.statusCode = 400;
-            throw error;
+        if (!eventId || !templateId) {
+            throwError(400, "Required: eventId & templateId")
         }
 
         // fetch the event
@@ -32,31 +25,23 @@ const cloneWebsiteFromTemplate = async (req, res) => {
 
         // additional checks to confirm the event actually exist in the database(just in case)
         if (!event) {
-            const error = new Error('Event not found');
-            error.statusCode = 404;
-            throw error;
+            throwError(404, "Event not found")
         }
 
         // if the event website has already been made
         if (event.website) {
-            const error = new Error('Website already exists for this event');
-            error.statusCode = 403;
-            throw error;
+            throwError(409, "Website already exists for this event")
         }
 
         // afterwards check if this event actually belongs to the logged in user
         if (event.organizer.toString() !== userId) {
-            const error = new Error("This event doesn't belong to you");
-            error.statusCode = 403;
-            throw error;
+            throwError(403, "Unauthorized to add website to this event")
         }
 
         // verify template existense in db with the templateId coming from client-side
         const template = await Template.findById(templateId).session(session);
         if (!template) {
-            const error = new Error("Template not found");
-            error.statusCode = 404;
-            throw error;
+            throwError(404, "Template not found")
         }
 
         // clone the actual template as event website temporarily
@@ -75,27 +60,11 @@ const cloneWebsiteFromTemplate = async (req, res) => {
 
         await session.commitTransaction();
 
-        res.status(201).json(
-            {
-                success: true,
-                message: "You have selected the template. Now you can proceed to its customization.",
-                data: {
-                    websiteId: website[0]._id
-                }
-            }
-        );
+        handleSuccessResponse(res, 201, "Successfully cloned website from template", { websiteId: website[0]._id })
     } catch (error) {
         await session.abortTransaction();
-        console.error(error);
 
-        const statusCode = error.statusCode || 500;
-        const message = error.message || "Internal server error";
-        res.status(statusCode).json(
-            {
-                success: false,
-                message
-            }
-        );
+        handleErrorResponse(res, error)
     } finally {
         session.endSession();
     }
@@ -117,29 +86,12 @@ const getWebsite = async (req, res) => {
             });
 
         if (!website) {
-            const error = new Error("Website not found");
-            error.statusCode = 404;
-            throw error;
+            throwError(404, "Website not found")
         }
 
-        res.status(200).json(
-            {
-                success: true,
-                message: "Successfully fetched website",
-                data: website
-            }
-        );
+        handleSuccessResponse(res, 200, "Successfully fetched website", website)
     } catch (error) {
-        console.error(error);
-
-        const statusCode = error.statusCode || 500;
-        const message = error.message || "Internal server error";
-        res.status(statusCode).json(
-            {
-                success: false,
-                message
-            }
-        );
+        handleErrorResponse(res, error)
     }
 };
 
@@ -155,36 +107,17 @@ const getSection = async (req, res) => {
             });
 
         if (!website) {
-            const error = new Error("Website not found");
-            error.statusCode = 404;
-            throw error;
+            throwError(404, "Website not found")
         }
 
         const section = website.sections.find(sec => sec._id.toString() === sectionId);
         if (!section) {
-            const error = new Error("Section doesn't exist in the website");
-            error.statusCode = 404;
-            throw error;
+            throwError(404, "Section not found")
         }
 
-        return res.status(200).json(
-            {
-                success: true,
-                message: "Successfully fetched section",
-                data: section
-            }
-        );
+        handleSuccessResponse(res, 200, "Successfully fetched section", section)
     } catch (error) {
-        console.error(error);
-
-        const statusCode = error.statusCode || 500;
-        const message = error.message || "Internal server error";
-        res.status(statusCode).json(
-            {
-                success: false,
-                message
-            }
-        );
+        handleErrorResponse(res, error)
     }
 }
 
@@ -204,24 +137,18 @@ const updateSection = async (req, res) => {
             });
 
         if (!website) {
-            const error = new Error("Website not found");
-            error.statusCode = 404;
-            throw error;
+            throwError(404, "Website not found")
         }
 
         // ensure current user is the event organizer
         if (website.belongsToThisEvent.organizer.toString() !== userId) {
-            const error = new Error("Not authorized to edit this website");
-            error.statusCode = 403;
-            throw error;
+            throwError(403, "Unauthorized to edit this website")
         }
 
         // verify section existence
         const section = website.sections.find(sec => sec._id.toString() === sectionId);
         if (!section) {
-            const error = new Error("Section doesn't exist in the website");
-            error.statusCode = 404;
-            throw error;
+            throwError(404, "Section not found")
         }
 
         console.log("content:", content);
@@ -277,25 +204,9 @@ const updateSection = async (req, res) => {
 
         await website.save();
 
-        return res.status(200).json(
-            {
-                success: true,
-                message: "Successfully updated section",
-                data: section
-            }
-        );
+        handleSuccessResponse(res, 200, "Successfully updated section", section)
     } catch (error) {
-        console.error(error);
-
-        const statusCode = error.statusCode || 500;
-        const message = error.message || "Internal server error";
-
-        res.status(statusCode).json(
-            {
-                success: false,
-                message
-            }
-        );
+        handleErrorResponse(res, error)
     }
 };
 
@@ -307,18 +218,13 @@ const saveWebsite = async (req, res) => {
     console.log("🚀 ~ saveWebsite ~ sections:", sections);
 
     if (!Array.isArray(sections)) {
-        return res.status(400).json({
-            success: false,
-            message: "Sections must be an array",
-        });
+        throwError(400, "Section must be an array")
     }
 
     try {
         const website = await Website.findById(websiteId);
         if (!website) {
-            const error = new Error("Website not found");
-            error.statusCode = 404;
-            throw error;
+            throwError(404, "Website not found")
         }
 
         // Loop through incoming sections and update the content that matches with the incoming sectionName to sectionName in database
@@ -342,22 +248,9 @@ const saveWebsite = async (req, res) => {
 
         await website.save();
 
-        res.status(200).json({
-            success: true,
-            message: "Website updated successfully",
-            data: website,
-        });
+        handleSuccessResponse(res, 200, "Successfully updated website", website)
     } catch (error) {
-        console.error(error);
-
-        const statusCode = error.statusCode || 500;
-        const message = error.message || "Internal server error";
-        res.status(statusCode).json(
-            {
-                success: false,
-                message
-            }
-        );
+        handleErrorResponse(res, error)
     }
 }
 
@@ -371,17 +264,13 @@ const publishWebsite = async (req, res) => {
         // validate subdomain
         const subdomainRegex = /^[a-z0-9-]{2,25}$/i;
         if (!subdomain || !subdomainRegex.test(subdomain)) {
-            const error = new Error("Invaid subdomain format");
-            error.statusCode = 400;
-            throw error;
+            throwError(400, "Invalid format: subdomain")
         }
 
         // check if website with requested subdomain name already exists
         const existing = await Website.findOne({ subdomain });
         if (existing) {
-            const error = new Error("Subdomain already taken");
-            error.statusCode = 409;
-            throw error;
+            throwError(409, "Subdomain unavailable")
         }
 
         const website = await Website.findById(websiteId).populate({
@@ -390,22 +279,16 @@ const publishWebsite = async (req, res) => {
         });
 
         if (!website) {
-            const error = new Error("Website not found");
-            error.statusCode = 404;
-            throw error;
+            throwError(404, "Website not found")
         }
 
         if (website.published || website.subdomain || website.url || website.publishedOn) {
-            const error = new Error("Website already published");
-            error.statusCode = 400;
-            throw error;
+            throwError(409, "Website already published")
         }
 
         // check website ownership
         if (website.belongsToThisEvent.organizer.toString() !== userId.toString()) {
-            const error = new Error("Unauthorized");
-            error.statusCode = 403;
-            throw error;
+            throwError(403, "Unauthorized to pubilsh this website")
         }
 
         website.published = true;
@@ -417,24 +300,9 @@ const publishWebsite = async (req, res) => {
 
         await website.save();
 
-        return res.status(200).json(
-            {
-                success: true,
-                message: "Website published successfully",
-                data: website
-            }
-        );
+        handleSuccessResponse(res, 200, "Successfully published website", website)
     } catch (error) {
-        console.error(error);
-
-        const statusCode = error.statusCode || 500;
-        const message = error.message || "Internal server error";
-        res.status(statusCode).json(
-            {
-                success: false,
-                message
-            }
-        );
+        handleErrorResponse(res, error)
     }
 }
 
@@ -444,15 +312,11 @@ const unpublishWebsite = async (req, res) => {
     try {
         const website = await Website.findById(websiteId);
         if (!website) {
-            const error = new Error("Website not found");
-            error.statusCode = 404;
-            throw error;
+            throwError(404, "Website not found")
         }
 
         if (!website.published || !website.subdomain || !website.url || !website.publishedOn) {
-            const error = new Error("Website is not published yet");
-            error.statusCode = 400;
-            throw error;
+            throwError(400, "Website not published yet")
         }
 
         website.published = false;
@@ -462,24 +326,9 @@ const unpublishWebsite = async (req, res) => {
 
         await website.save();
 
-        return res.status(200).json(
-            {
-                success: true,
-                message: "Website unpublished"
-            }
-        )
-
+        handleSuccessResponse(res, 200, "Successfully unpublished website")
     } catch (error) {
-        console.error(error);
-
-        const statusCode = error.statusCode || 500;
-        const message = error.message || "Internal server error";
-        res.status(statusCode).json(
-            {
-                success: false,
-                message
-            }
-        );
+        handleErrorResponse(res, error)
     }
 
 }
@@ -496,28 +345,12 @@ const getPublicWebsite = async (req, res) => {
             })
 
         if (!website) {
-            const error = new Error("Website not found");
-            error.statusCode = 404;
-            throw error;
+            throwError(404, "Website not found")
         }
 
-        res.status(200).json(
-            {
-                success: true,
-                message: "Successfully fetched website",
-                data: website
-            });
+        handleSuccessResponse(res, 200, "Successfully fetched website", website)
     } catch (error) {
-        console.error(error);
-
-        const statusCode = error.statusCode || 500;
-        const message = error.message || "Internal server error";
-        res.status(statusCode).json(
-            {
-                success: false,
-                message
-            }
-        );
+        handleErrorResponse(res, error)
     }
 };
 
@@ -541,9 +374,7 @@ const getPublishedWebsites = async (req, res) => {
             });
 
         if (!events) {
-            const error = new Error("You don't even have any events created yet to have website.");
-            error.statusCode = 404;
-            throw error;
+            throwError(404, "Events don't even exist to fetch published websites")
         }
 
         const publishedWebsites = events.map(({ eventName, website }) => (
@@ -553,23 +384,9 @@ const getPublishedWebsites = async (req, res) => {
             }
         )).filter(event => event.website);
 
-        res.status(200).json(
-            {
-                success: true,
-                message: "Successfully fetched published websites",
-                data: publishedWebsites
-            });
+        handleSuccessResponse(res, 200, "Successfully fetched published websites", publishedWebsites)
     } catch (error) {
-        console.error(error);
-
-        const statusCode = error.statusCode || 500;
-        const message = error.message || "Internal server error";
-        res.status(statusCode).json(
-            {
-                success: false,
-                message
-            }
-        );
+        handleErrorResponse(res, error)
     }
 }
 
@@ -590,16 +407,12 @@ const deleteWebsite = async (req, res) => {
             .session(session);
 
         if (!website) {
-            const error = new Error("Website not found");
-            error.statusCode = 404;
-            throw error;
+            throwError(404, "Website not found")
         }
 
         // ensure current user is the event organizer
         if (website.belongsToThisEvent.organizer.toString() !== userId) {
-            const error = new Error("Not authorized to delete this website");
-            error.statusCode = 403;
-            throw error;
+            throwError(403, "Unauthorized to delete this website")
         }
 
         // delete the website
@@ -614,24 +427,11 @@ const deleteWebsite = async (req, res) => {
 
         await session.commitTransaction();
 
-        res.status(200).json(
-            {
-                success: true,
-                message: "Successfully deleted website"
-            });
+        handleSuccessResponse(res, 200, "Successfully deleted website")
     } catch (error) {
         await session.abortTransaction();
 
-        console.error(error);
-
-        const statusCode = error.statusCode || 500;
-        const message = error.message || "Internal server error";
-        res.status(statusCode).json(
-            {
-                success: false,
-                message
-            }
-        );
+        handleErrorResponse(res, error)
     } finally {
         session.endSession();
     }
@@ -643,36 +443,18 @@ const sendEmailToOrganizer = async (req, res) => {
 
     try {
         if (!formData.visitorEmail) {
-            const error = new Error("Please provide your email address");
-            error.statusCode = 400;
-            throw error;
+            throwError(400, "Required: visitorEmail")
         }
 
-        // for developer only while testing
         if (!formData.organizerEmail) {
-            const error = new Error("Please include organizer email address in the request body");
-            error.statusCode = 400;
-            throw error;
+            throwError(400, "Required: organizerEmail")
         }
 
         await sendEmail(formData);
 
-        res.status(200).json(
-            {
-                success: true,
-                message: "Email sent successfully",
-            });
+        handleSuccessResponse(res, 200, "Successfully sent email")
     } catch (error) {
-        console.error(error);
-
-        const statusCode = error.statusCode || 500;
-        const message = error.message || "Internal server error";
-        res.status(statusCode).json(
-            {
-                success: false,
-                message
-            }
-        );
+        handleErrorResponse(res, error)
     }
 }
 

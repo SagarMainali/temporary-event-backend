@@ -1,4 +1,5 @@
 const Template = require("../models/templateModel.js");
+const { throwError, handleSuccessResponse, handleErrorResponse } = require("../utils/utils.js");
 
 // add new template
 const addTemplate = async (req, res) => {
@@ -6,9 +7,7 @@ const addTemplate = async (req, res) => {
         const { templateName, description, previewImage, sections } = req.body;
 
         if (!templateName || !description || !previewImage || !sections) {
-            const error = new Error("Missing one or more required fields. Recheck and verify complete data are sent!");
-            error.statusCode = 400;
-            throw error;
+            throwError(400, "Required: templateName, description, previewImage & sections")
         }
 
         const newTemplate = new Template({
@@ -19,22 +18,10 @@ const addTemplate = async (req, res) => {
         });
 
         await newTemplate.save();
-        res.status(201).json({
-            success: true,
-            message: "Template added successfully",
-            template: newTemplate
-        });
-    } catch (error) {
-        console.error(error);
 
-        const statusCode = error.statusCode || 500;
-        const message = error.message || "Internal server error";
-        res.status(statusCode).json(
-            {
-                success: false,
-                message
-            }
-        );
+        handleSuccessResponse(res, 201, "Successfully added template")
+    } catch (error) {
+        handleErrorResponse(res, error)
     }
 }
 
@@ -44,21 +31,9 @@ const getAllTemplates = async (_, res) => {
         const templates = await Template.find({})
             .sort({ createdAt: -1 }); // newest first
 
-        res.status(200).json(
-            {
-                success: true,
-                message: "Successfully fetched templates",
-                data: templates,
-            }
-        );
+        handleSuccessResponse(res, 200, "Successfully fetched templates", templates)
     } catch (error) {
-        console.error("Error fetching templates:", error);
-        res.status(500).json(
-            {
-                success: false,
-                message: "Failed to fetch templates"
-            }
-        );
+        handleErrorResponse(res, error)
     }
 }
 
@@ -68,30 +43,14 @@ const getTemplate = async (req, res) => {
 
     try {
         const template = await Template.findById(templateId);
+
         if (!template) {
-            const error = new Error("Template not found");
-            error.statusCode = 404;
-            throw error;
+            throwError(404, "Template not found")
         }
 
-        res.status(200).json(
-            {
-                success: true,
-                message: "Successfully fetched template",
-                data: template
-            }
-        );
+        handleSuccessResponse(res, 200, "Successfully fetched tempalte", template)
     } catch (error) {
-        console.error(error);
-
-        const statusCode = error.statusCode || 500;
-        const message = error.message || "Internal server error";
-        res.status(statusCode).json(
-            {
-                success: false,
-                message
-            }
-        );
+        handleErrorResponse(res, error)
     }
 };
 
