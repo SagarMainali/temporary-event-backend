@@ -9,9 +9,9 @@ const eventSchema = new mongoose.Schema(
         eventName: { type: String },
         description: { type: String },
         location: { type: String },
-        date: { type: String },
+        date: { type: Date },
         time: { type: String },
-        expectedNumberOfPeople: { type: Number },
+        expectedNumberOfPeople: { type: Number, default: 0 },
         phone: { type: String }, // for viewers
         email: { type: String }, // for viewers
         template: { type: mongoose.Schema.Types.ObjectId, ref: "Template" },
