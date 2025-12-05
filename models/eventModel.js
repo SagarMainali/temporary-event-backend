@@ -18,8 +18,8 @@ const eventSchema = new mongoose.Schema(
         website: { type: mongoose.Schema.Types.ObjectId, ref: "Website" },
         status: {
             type: String,
-            enum: ["planned", "completed", "failed"], // can be easily changed later
-            default: "planned"
+            enum: ["upcoming", "completed", "failed"],
+            default: "upcoming"
         },
     },
     {

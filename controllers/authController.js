@@ -199,12 +199,10 @@ const changePassword = async (req, res) => {
 
 // generate new access token
 const refreshAccessToken = async (req, res) => {
-  const errorMessage = "Invalid refresh token!";
-
   try {
     const refreshToken = req.cookies.refresh_token;
     if (!refreshToken) {
-      throwError(403, errorMessage)
+      throwError(403, "Required: refreshToken")
     }
 
     // verify refresh token

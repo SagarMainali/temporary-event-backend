@@ -215,13 +215,17 @@ const saveWebsite = async (req, res) => {
     const { websiteId } = req.params;
     const { sections } = req.body;
 
-    console.log("🚀 ~ saveWebsite ~ sections:", sections);
-
-    if (!Array.isArray(sections)) {
-        throwError(400, "Section must be an array")
-    }
-
     try {
+        if (!sections) {
+            throwError(400, "Required: sections")
+        }
+
+        console.log("🚀 ~ saveWebsite ~ sections:", sections);
+
+        if (!Array.isArray(sections)) {
+            throwError(400, "Section must be an array")
+        }
+
         const website = await Website.findById(websiteId);
         if (!website) {
             throwError(404, "Website not found")
