@@ -231,26 +231,35 @@ const saveWebsite = async (req, res) => {
             throwError(404, "Website not found")
         }
 
+        const imagesToDelete = [];
+
         // Loop through incoming sections and update the content that matches with the incoming sectionName to sectionName in database
-        sections.forEach((incoming) => {
-            if (
-                incoming &&
-                typeof incoming.sectionName === "string" &&
-                incoming.content !== undefined
-            ) {
+        // also add images to delete to the list
+        sections.forEach((incomingSection) => {
+            if (incomingSection && incomingSection.content !== undefined) {
                 // Find the matching section in the existing document
                 const existingSection = website.sections.find(
-                    (s) => s.sectionName === incoming.sectionName
+                    (s) => s.sectionName === incomingSection.sectionName
                 );
 
                 if (existingSection) {
-                    // Only update the content field
-                    existingSection.content = incoming.content;
+                    // update the content field
+                    existingSection.content = incomingSection.content;
+
+                    // add images to delete to the list
+                    if (incomingSection.imagesToDelete && incomingSection.imagesToDelete.length > 0) {
+                        imagesToDelete.push(...incomingSection.imagesToDelete);
+                    }
                 }
             }
         });
 
         await website.save();
+
+        // intentionally deleting without waiting for faster response
+        if (imagesToDelete.length > 0) {
+            deleteFromCloudinary(imagesToDelete);
+        }
 
         handleSuccessResponse(res, 200, "Successfully updated website", website)
     } catch (error) {
