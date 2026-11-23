@@ -11,7 +11,7 @@ if (!process.env.SENDER_EMAIL_ADDRESS || !process.env.BREVO_SMTP_SERVER || !proc
     
     transporter = nodemailer.createTransport({
         host: process.env.BREVO_SMTP_SERVER,
-        port: 587,
+        port: 2525, // 587 is blocked by render firewall
         secure: false, // false for port 587
         auth: {
             user: process.env.BREVO_LOGIN,
