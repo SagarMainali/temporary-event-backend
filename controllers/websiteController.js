@@ -2,10 +2,12 @@ const mongoose = require("mongoose");
 const Event = require("../models/eventModel.js");
 const Template = require("../models/templateModel.js");
 const Website = require("../models/websiteModel.js");
+const Submission = require("../models/submissionModel.js");
 const sendEmail = require("../helpers/sendEmail");
 const { uploadToCloudinary, deleteFromCloudinary } = require("../helpers/cloudinary.js");
 const _ = require("lodash");
 const { throwError, handleSuccessResponse, handleErrorResponse } = require("../utils/utils.js");
+const { extractSubdomain } = require("../helpers/extractSubdomain.js");
 
 // clone website from template(your first website)
 const cloneWebsiteFromTemplate = async (req, res) => {
@@ -450,26 +452,70 @@ const deleteWebsite = async (req, res) => {
     }
 };
 
-// send email to organizer from website viewer
-const sendEmailToOrganizer = async (req, res) => {
+// save formdata and send email(form filler)
+const handleFormSubmission = async (req, res) => {
     const formData = req.body;
 
     try {
+        const subdomain = extractSubdomain(req);
+        if (!subdomain) {
+            throwError(403, "Invalid or unauthorized request origin");
+        }
+
         if (!formData.visitorEmail) {
-            throwError(400, "Required: visitorEmail")
+            throwError(400, "Required: visitorEmail");
         }
 
         if (!formData.organizerEmail) {
-            throwError(400, "Required: organizerEmail")
+            throwError(400, "Required: organizerEmail");
         }
 
-        await sendEmail(formData);
+        // Attach the verified subdomain to the payload
+        const submissionPayload = {
+            ...formData,
+            subdomain,
+        };
 
-        handleSuccessResponse(res, 200, "Successfully sent email")
+        // 1. Save form data immediately with default "pending" status
+        const savedSubmission = await Submission.create(submissionPayload);
+
+        // 2. Attempt to send the email in an isolated try/catch
+        try {
+            await sendEmail(submissionPayload);
+
+            // Update status to "sent"
+            savedSubmission.emailStatus = "sent";
+            await savedSubmission.save();
+
+            handleSuccessResponse(res, 200, "Form data saved and email sent", savedSubmission);
+        } catch (emailErr) {
+            // Update status to "failed" and log the error message
+            savedSubmission.emailStatus = "failed";
+            // savedSubmission.emailError = emailErr.message;
+            await savedSubmission.save();
+
+            // Decide how you want to respond to the frontend:
+            // Option A: Throw an error so the user knows the email failed
+            // throwError(500, "Form data saved, but failed to send email");
+
+            // Option B: Return 200/207 if saving the form is the primary goal
+            handleSuccessResponse(res, 200, "Form saved, email failed", savedSubmission);
+        }
+
     } catch (error) {
-        handleErrorResponse(res, error)
+        handleErrorResponse(res, error);
     }
-}
+};
+
+const getSubmissions = async (_, res) => {
+    try {
+        // Fetch all submissions, sorted by newest first
+        const submissions = await Submission.find().sort({ createdAt: -1 });
+        handleSuccessResponse(res, 200, "Fetched submissions", submissions);
+    } catch (error) {
+        handleErrorResponse(res, error);
+    }
+};
 
 module.exports = {
     cloneWebsiteFromTemplate,
@@ -482,5 +528,6 @@ module.exports = {
     publishWebsite,
     unpublishWebsite,
     getPublishedWebsites,
-    sendEmailToOrganizer
+    handleFormSubmission,
+    getSubmissions
 }

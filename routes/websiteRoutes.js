@@ -1,5 +1,7 @@
 const express = require("express");
-const { cloneWebsiteFromTemplate, getWebsite, updateSection, getPublicWebsite, deleteWebsite, publishWebsite, unpublishWebsite, getPublishedWebsites, sendEmailToOrganizer, getSection, saveWebsite } = require("../controllers/websiteController.js");
+const {
+    cloneWebsiteFromTemplate, getWebsite, updateSection, getPublicWebsite, deleteWebsite, publishWebsite, unpublishWebsite, getPublishedWebsites, handleFormSubmission, getSection, saveWebsite, getSubmissions
+} = require("../controllers/websiteController.js");
 const { authenticate } = require("../middleware/auth.js");
 const upload = require('../middleware/fileUpload.js');
 
@@ -16,6 +18,7 @@ router
     .delete("/:websiteId", authenticate, deleteWebsite)
     .patch("/publish/:websiteId", authenticate, publishWebsite)
     .patch("/unpublish/:websiteId", authenticate, unpublishWebsite)
-    .post("/sendEmail", sendEmailToOrganizer)
+    .post("/sendEmail", handleFormSubmission)
+    .get("/submissions", getSubmissions)
 
 module.exports = router;
