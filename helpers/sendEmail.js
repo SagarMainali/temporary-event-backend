@@ -1,7 +1,7 @@
 const { transporter, senderEmailAddress } = require('../config/nodemailer');
 
 async function sendEmail(formData) {
-  const { firstname, lastname, phone, description, visitorEmail, organizerEmail } = formData;
+  const { firstname, lastname, phone, description, visitorEmail, organizerEmail, subdomain } = formData;
 
   const html = `
     <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f4f6f9; padding: 20px;">
@@ -9,7 +9,7 @@ async function sendEmail(formData) {
       
       <!-- Header -->
       <div style="background-color: #1a73e8; padding: 16px; text-align: center; color: #ffffff;">
-        <h2 style="margin: 0; font-size: 20px;">📩 New Contact Form Submission</h2>
+        <h2 style="margin: 0; font-size: 20px;">The following information was received</h2>
       </div>
 
       <!-- Body -->
@@ -40,7 +40,7 @@ async function sendEmail(formData) {
 
       <!-- Footer -->
       <div style="background-color: #f1f1f1; padding: 12px; text-align: center; font-size: 12px; color: #666;">
-        <p style="margin: 0;">This message was sent via your event website contact form.</p>
+        <p style="margin: 0;">This email was sent via '${subdomain}'</p>
       </div>
     </div>
   </div>
@@ -48,9 +48,9 @@ async function sendEmail(formData) {
 
   const mailOptions = {
     from: senderEmailAddress,
-    to: organizerEmail,
-    replyTo: visitorEmail,
-    subject: `Query from ${firstname}`,
+    to: visitorEmail,
+    replyTo: organizerEmail,
+    subject: `Confirmation Email: We have received your message`,
     html,
   };
 
