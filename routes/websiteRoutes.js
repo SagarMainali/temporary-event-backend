@@ -19,6 +19,6 @@ router
     .patch("/publish/:websiteId", authenticate, publishWebsite)
     .patch("/unpublish/:websiteId", authenticate, unpublishWebsite)
     .post("/sendEmail", handleFormSubmission)
-    .get("/submissions", getSubmissions)
+    .get("/submissions", authenticate, getSubmissions)
 
 module.exports = router;

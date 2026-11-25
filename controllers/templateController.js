@@ -29,7 +29,9 @@ const addTemplate = async (req, res) => {
 const getAllTemplates = async (_, res) => {
     try {
         const templates = await Template.find({})
-            .sort({ createdAt: -1 }); // newest first
+            .select("-sections")
+            .sort({ createdAt: -1 })
+            .lean(); // newest first
 
         handleSuccessResponse(res, 200, "Successfully fetched templates", templates)
     } catch (error) {
@@ -42,7 +44,7 @@ const getTemplate = async (req, res) => {
     const { templateId } = req.params;
 
     try {
-        const template = await Template.findById(templateId);
+        const template = await Template.findById(templateId).lean();
 
         if (!template) {
             throwError(404, "Template not found")

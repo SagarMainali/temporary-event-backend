@@ -35,7 +35,9 @@ const createEvent = async (req, res) => {
         handleSuccessResponse(res, 201, "Successfully created event", event[0])
     } catch (error) {
         // if any one db operation fails
-        await session.abortTransaction();
+        if (session.inTransaction()) {
+            await session.abortTransaction();
+        }
 
         handleErrorResponse(res, error)
     } finally {
@@ -49,11 +51,8 @@ const getUserEvents = async (req, res) => {
 
     try {
         const events = await Event.find({ organizer: userId })
-            .populate({
-                path: "website",
-                select: "sections baseTemplate",
-            })
-            .sort({ createdAt: -1 }); // newest first
+            .sort({ createdAt: -1 })
+            .lean(); // newest first
 
         handleSuccessResponse(res, 200, "Successfully fetched events", events)
     } catch (error) {
@@ -67,11 +66,7 @@ const getSingleEvent = async (req, res) => {
     const userId = req.user.id;
 
     try {
-        const event = await Event.findById(eventId)
-            .populate({
-                path: "website",
-                select: "sections baseTemplate",
-            });
+        const event = await Event.findById(eventId).lean();
 
         if (!event) {
             throwError(404, "Event not found")
@@ -95,20 +90,31 @@ const updateEvent = async (req, res) => {
     const updates = req.body;
 
     try {
-        const event = await Event.findById(eventId);
-        if (!event) {
-            throwError(404, "Event not found")
-        }
+        // const event = await Event.findById(eventId).select("organizer").lean();
 
-        // Ownership check
-        if (event.organizer.toString() !== userId) {
-            throwError(403, "Unauthorized to edit this event")
-        }
+        // if (!event) {
+        //     throwError(404, "Event not found")
+        // }
 
-        const updatedEvent = await Event.findByIdAndUpdate(eventId, updates, {
-            new: true,
-            runValidators: true,
-        });
+        // // Ownership check
+        // if (event.organizer.toString() !== userId) {
+        //     throwError(403, "Unauthorized to edit this event")
+        // }
+
+        // const updatedEvent = await Event.findByIdAndUpdate(eventId, updates, {
+        //     new: true,
+        //     runValidators: true,
+        // }).lean();
+
+        const updatedEvent = await Event.findOneAndUpdate(
+            { _id: eventId, organizer: userId },
+            { $set: updates },
+            { new: true, runValidators: true }
+        ).lean();
+
+        if (!updatedEvent) {
+            throwError(404, "Event not found or unauthorized");
+        }
 
         handleSuccessResponse(res, 200, "Successfully updated event", updatedEvent)
     } catch (error) {
@@ -125,7 +131,7 @@ const deleteEvent = async (req, res) => {
     session.startTransaction();
 
     try {
-        const event = await Event.findById(eventId).session(session);
+        const event = await Event.findById(eventId).select("organizer").session(session).lean();
         if (!event) {
             throwError(404, "Event not found")
         }
@@ -135,20 +141,28 @@ const deleteEvent = async (req, res) => {
         }
 
         // delete linked website if ever created
-        await Website.findOneAndDelete({ belongsToThisEvent: eventId }).session(session);
+        // await Website.findOneAndDelete({ belongsToThisEvent: eventId }).session(session);
+        await Website.deleteOne({ belongsToThisEvent: eventId }).session(session); // Use deleteOne / updateOne when you don't need the deleted/updated doc returned
 
         // Delete the event
-        await Event.findByIdAndDelete(eventId).session(session);
+        // await Event.findByIdAndDelete(eventId).session(session);
+        await Event.deleteOne({ _id: eventId }).session(session);
 
         // Remove the event from the User's events list as well
-        await User.findByIdAndUpdate(userId, { $pull: { events: eventId } }).session(session);
+        // await User.findByIdAndUpdate(userId, { $pull: { events: eventId } }).session(session);
+        await User.updateOne(
+            { _id: userId },
+            { $pull: { events: eventId } }
+        ).session(session);
 
         await session.commitTransaction();
 
         handleSuccessResponse(res, 200, "Successfully deleted event and linked website")
     } catch (error) {
         // if any one db operation fails, abort the whole operation
-        await session.abortTransaction();
+        if (session.inTransaction()) {
+            await session.abortTransaction();
+        }
 
         handleErrorResponse(res, error)
     } finally {

@@ -16,7 +16,12 @@ const templateSchema = new mongoose.Schema(
         description: { type: String, required: true },
         previewImage: { type: String, required: true },
         sections: [templateSectionSchema],
+    },
+    {
+        timestamps: true,
     }
 );
+
+templateSchema.index({ createdAt: -1 });
 
 module.exports = mongoose.model("Template", templateSchema);
