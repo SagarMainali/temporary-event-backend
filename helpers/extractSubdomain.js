@@ -9,7 +9,7 @@ export const extractSubdomain = (req) => {
         if (hostname.endsWith("localhost")) {
             // const localParts = hostname.split(".");
             // return localParts.length > 1 ? localParts[0] : "main";
-            return 'test.localhost'
+            return 'testevent'
         }
 
         // Ensure request comes from your own domain
@@ -24,7 +24,7 @@ export const extractSubdomain = (req) => {
         // }
 
         // return "main";
-        return hostname;
+        return hostname.split('.')[0];
     } catch {
         return null;
     }

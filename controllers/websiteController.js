@@ -560,7 +560,7 @@ const handleFormSubmission = async (req, res) => {
     }
 };
 
-const getSubmissions = async (_, res) => {
+const getSubmissions = async (req, res) => {
     try {
         const userId = req.user.id;
 
