@@ -3,17 +3,17 @@ export const extractSubdomain = (req) => {
     if (!origin) return null;
 
     try {
-        const { hostname } = new URL(origin); // e.g., "://domain.com.np" or ://localhost
+        const { host } = new URL(origin); // e.g., "://domain.com.np" or ://localhost
 
-        // Support local development (e.g., http://site1.localhost or http://localhost)
-        if (hostname.endsWith("localhost")) {
-            // const localParts = hostname.split(".");
-            // return localParts.length > 1 ? localParts[0] : "main";
-            return 'testevent'
-        }
+        // Support local development (e.g., http://site1.localhost:5173 or http://localhost:5173)
+        // if (hostname.endsWith("localhost")) {
+        // const localParts = hostname.split(".");
+        // return localParts.length > 1 ? localParts[0] : "main";
+        // return 'testevent'
+        // }
 
         // Ensure request comes from your own domain
-        if (!hostname.endsWith(process.env.DOMAIN_NAME)) {
+        if (!host.endsWith(process.env.DOMAIN_NAME)) {
             return null;
         }
 
@@ -24,7 +24,7 @@ export const extractSubdomain = (req) => {
         // }
 
         // return "main";
-        return hostname.split('.')[0];
+        return host.split('.')[0];
     } catch {
         return null;
     }

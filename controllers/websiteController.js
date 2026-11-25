@@ -333,7 +333,8 @@ const publishWebsite = async (req, res) => {
         await website.save();
 
         handleSuccessResponse(res, 200, "Successfully published website", {
-            url: website.url,
+            // url: website.url,
+            subdomain: website.subdomain,
         })
     } catch (error) {
         handleErrorResponse(res, error)
@@ -376,10 +377,10 @@ const getPublicWebsite = async (req, res) => {
 
     try {
         const website = await Website.findOne({ subdomain, published: true })
-            .populate({
-                path: "belongsToThisEvent",
-                select: "eventName description date time location email",
-            })
+            // .populate({
+            //     path: "belongsToThisEvent",
+            //     select: "eventName description date time location email",
+            // })
             .lean();
 
         if (!website) {
@@ -483,7 +484,8 @@ const deleteWebsite = async (req, res) => {
 
 // save formdata and send email(form filler)
 const handleFormSubmission = async (req, res) => {
-    const { firstname, lastname, phone, description, visitorEmail, organizerEmail } = req.body;
+    // const { firstname, lastname, phone, description, visitorEmail, organizerEmail } = req.body;
+    const { firstname, lastname, phone, description, visitorEmail } = req.body;
 
     try {
         const subdomain = extractSubdomain(req);
@@ -495,9 +497,9 @@ const handleFormSubmission = async (req, res) => {
             throwError(400, "Required: visitorEmail");
         }
 
-        if (!organizerEmail) {
-            throwError(400, "Required: organizerEmail");
-        }
+        // if (!organizerEmail) {
+        //     throwError(400, "Required: organizerEmail");
+        // }
 
         // Identify the organizer from the subdomain to link this visitor data to their account
         const website = await Website.findOne({ subdomain, published: true })
@@ -522,7 +524,7 @@ const handleFormSubmission = async (req, res) => {
             phone,
             description,
             visitorEmail,
-            organizerEmail,
+            // organizerEmail,
             subdomain,
         };
 
