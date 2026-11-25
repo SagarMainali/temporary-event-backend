@@ -40,7 +40,7 @@ async function sendEmail(formData) {
 
       <!-- Footer -->
       <div style="background-color: #f1f1f1; padding: 12px; text-align: center; font-size: 12px; color: #666;">
-        <p style="margin: 0;">This email was sent via '${subdomain}'</p>
+        <p style="margin: 0;">This email was sent via '${subdomain}.${process.env.DOMAIN_NAME}'</p>
       </div>
     </div>
   </div>
