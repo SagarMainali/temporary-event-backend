@@ -12,8 +12,8 @@ const eventSchema = new mongoose.Schema(
         date: { type: Date },
         time: { type: String },
         expectedNumberOfPeople: { type: Number, default: 0 },
-        phone: { type: String }, // for viewers
-        email: { type: String }, // for viewers
+        // phone: { type: String }, // for viewers
+        // email: { type: String }, // for viewers
         template: { type: mongoose.Schema.Types.ObjectId, ref: "Template" },
         website: { type: mongoose.Schema.Types.ObjectId, ref: "Website" },
         status: {

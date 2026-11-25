@@ -5,7 +5,7 @@ const submissionSchema = new mongoose.Schema(
         // user reference: to whom these visitors belong to        
         organizer: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
         visitorEmail: { type: String, required: true },
-        organizerEmail: { type: String, required: true },
+        // organizerEmail: { type: String, required: true },
         firstname: String,
         lastname: String,
         phone: String,

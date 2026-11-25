@@ -1,7 +1,8 @@
 const { transporter, senderEmailAddress } = require('../config/nodemailer');
 
 async function sendEmail(formData) {
-  const { firstname, lastname, phone, description, visitorEmail, organizerEmail, subdomain } = formData;
+  // const { firstname, lastname, phone, description, visitorEmail, organizerEmail, subdomain } = formData;
+  const { firstname, lastname, phone, description, visitorEmail, subdomain } = formData;
 
   const html = `
     <div style="font-family: Arial, sans-serif; line-height: 1.6; color: #333; background-color: #f4f6f9; padding: 20px;">
@@ -49,7 +50,7 @@ async function sendEmail(formData) {
   const mailOptions = {
     from: senderEmailAddress,
     to: visitorEmail,
-    replyTo: organizerEmail,
+    // replyTo: organizerEmail,
     subject: `Confirmation Email: We have received your message`,
     html,
   };
