@@ -27,4 +27,6 @@ const eventSchema = new mongoose.Schema(
     }
 );
 
+eventSchema.index({ organizer: 1, createdAt: -1 });
+
 module.exports = mongoose.model("Event", eventSchema);

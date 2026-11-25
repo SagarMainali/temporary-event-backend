@@ -23,7 +23,9 @@ const cloneWebsiteFromTemplate = async (req, res) => {
         }
 
         // fetch the event
-        const event = await Event.findById(eventId).session(session);
+        const event = await Event.findById(eventId)
+            .select("organizer website")
+            .session(session);
 
         // additional checks to confirm the event actually exist in the database(just in case)
         if (!event) {
@@ -41,30 +43,39 @@ const cloneWebsiteFromTemplate = async (req, res) => {
         }
 
         // verify template existense in db with the templateId coming from client-side
-        const template = await Template.findById(templateId).session(session);
+        const template = await Template.findById(templateId)
+            .select("sections")
+            .session(session)
+            .lean();
+
         if (!template) {
             throwError(404, "Template not found")
         }
 
         // clone the actual template as event website temporarily
-        const website = await Website.create([{
-            belongsToThisEvent: event._id,
-            baseTemplate: template._id,
-            sections: template.sections.map(s => ({
-                sectionName: s.sectionName,
-                content: s.content
-            }))
-        }], { session });
+        const [website] = await Website.create(
+            [
+                {
+                    belongsToThisEvent: event._id,
+                    baseTemplate: template._id,
+                    sections: template.sections.map(s => ({
+                        sectionName: s.sectionName,
+                        content: structuredClone(s.content), // Deep clone so nested Mixed objects aren't shared in memory
+                    }))
+                }
+            ], { session });
 
         // store the cloned template id in the actual event document
-        event.website = website[0]._id;
+        event.website = website._id;
         await event.save({ session });
 
         await session.commitTransaction();
 
-        handleSuccessResponse(res, 201, "Successfully cloned website from template", { websiteId: website[0]._id })
+        handleSuccessResponse(res, 201, "Successfully cloned website from template", { websiteId: website._id })
     } catch (error) {
-        await session.abortTransaction();
+        if (session.inTransaction()) {
+            await session.abortTransaction();
+        }
 
         handleErrorResponse(res, error)
     } finally {
@@ -85,7 +96,8 @@ const getWebsite = async (req, res) => {
             .populate({
                 path: "baseTemplate",
                 select: "templateName",
-            });
+            })
+            .lean();
 
         if (!website) {
             throwError(404, "Website not found")
@@ -103,10 +115,12 @@ const getSection = async (req, res) => {
 
     try {
         const website = await Website.findById(websiteId)
+            .select("sections belongsToThisEvent")
             .populate({
                 path: "belongsToThisEvent",
                 select: "organizer",
-            });
+            })
+            .lean();
 
         if (!website) {
             throwError(404, "Website not found")
@@ -133,6 +147,7 @@ const updateSection = async (req, res) => {
     try {
         // find website and populate its event + organizer
         const website = await Website.findById(websiteId)
+            .select("sections belongsToThisEvent")
             .populate({
                 path: "belongsToThisEvent",
                 select: "organizer",
@@ -228,7 +243,7 @@ const saveWebsite = async (req, res) => {
             throwError(400, "Section must be an array")
         }
 
-        const website = await Website.findById(websiteId);
+        const website = await Website.findById(websiteId).select("sections");
         if (!website) {
             throwError(404, "Website not found")
         }
@@ -283,27 +298,29 @@ const publishWebsite = async (req, res) => {
         }
 
         // check if website with requested subdomain name already exists
-        const existing = await Website.findOne({ subdomain });
+        const existing = await Website.exists({ subdomain });
         if (existing) {
             throwError(409, "Subdomain unavailable")
         }
 
-        const website = await Website.findById(websiteId).populate({
-            path: "belongsToThisEvent",
-            select: "organizer",
-        });
+        const website = await Website.findById(websiteId)
+            .select("belongsToThisEvent published subdomain url publishedOn") // Skip loading heavy sections
+            .populate({
+                path: "belongsToThisEvent",
+                select: "organizer",
+            });
 
         if (!website) {
             throwError(404, "Website not found")
         }
 
-        if (website.published || website.subdomain || website.url || website.publishedOn) {
-            throwError(409, "Website already published")
-        }
-
         // check website ownership
         if (website.belongsToThisEvent.organizer.toString() !== userId.toString()) {
-            throwError(403, "Unauthorized to pubilsh this website")
+            throwError(403, "Unauthorized to publish this website")
+        }
+
+        if (website.published || website.subdomain || website.url || website.publishedOn) {
+            throwError(409, "Website already published")
         }
 
         website.published = true;
@@ -315,7 +332,9 @@ const publishWebsite = async (req, res) => {
 
         await website.save();
 
-        handleSuccessResponse(res, 200, "Successfully published website", website)
+        handleSuccessResponse(res, 200, "Successfully published website", {
+            url: website.url,
+        })
     } catch (error) {
         handleErrorResponse(res, error)
     }
@@ -325,7 +344,10 @@ const unpublishWebsite = async (req, res) => {
     const { websiteId } = req.params;
 
     try {
-        const website = await Website.findById(websiteId);
+        const website = await Website.findById(websiteId).select(
+            "published subdomain url publishedOn"
+        );
+
         if (!website) {
             throwError(404, "Website not found")
         }
@@ -358,6 +380,7 @@ const getPublicWebsite = async (req, res) => {
                 path: "belongsToThisEvent",
                 select: "eventName description date time location email",
             })
+            .lean();
 
         if (!website) {
             throwError(404, "Website not found")
@@ -375,6 +398,7 @@ const getPublishedWebsites = async (req, res) => {
 
     try {
         const events = await Event.find({ organizer: userId })
+            .select("eventName website")
             .populate({
                 path: 'website',
                 match: {
@@ -386,9 +410,10 @@ const getPublishedWebsites = async (req, res) => {
                     path: 'baseTemplate',
                     select: 'templateName'
                 }
-            });
+            })
+            .lean();
 
-        if (!events) {
+        if (!events.length) {
             throwError(404, "Events don't even exist to fetch published websites")
         }
 
@@ -415,11 +440,13 @@ const deleteWebsite = async (req, res) => {
 
     try {
         const website = await Website.findById(websiteId)
+            .select("belongsToThisEvent")
             .populate({
                 path: "belongsToThisEvent",
                 select: "organizer",
             })
-            .session(session);
+            .session(session)
+            .lean();
 
         if (!website) {
             throwError(404, "Website not found")
@@ -444,7 +471,9 @@ const deleteWebsite = async (req, res) => {
 
         handleSuccessResponse(res, 200, "Successfully deleted website")
     } catch (error) {
-        await session.abortTransaction();
+        if (session.inTransaction()) {
+            await session.abortTransaction();
+        }
 
         handleErrorResponse(res, error)
     } finally {
@@ -454,7 +483,7 @@ const deleteWebsite = async (req, res) => {
 
 // save formdata and send email(form filler)
 const handleFormSubmission = async (req, res) => {
-    const formData = req.body;
+    const { firstname, lastname, phone, description, visitorEmail, organizerEmail } = req.body;
 
     try {
         const subdomain = extractSubdomain(req);
@@ -462,22 +491,46 @@ const handleFormSubmission = async (req, res) => {
             throwError(403, "Invalid or unauthorized request origin");
         }
 
-        if (!formData.visitorEmail) {
+        if (!visitorEmail) {
             throwError(400, "Required: visitorEmail");
         }
 
-        if (!formData.organizerEmail) {
+        if (!organizerEmail) {
             throwError(400, "Required: organizerEmail");
+        }
+
+        // Identify the organizer from the subdomain to link this visitor data to their account
+        const website = await Website.findOne({ subdomain, published: true })
+            .select("belongsToThisEvent") // Skips loading heavy sections data
+            .populate({
+                path: "belongsToThisEvent",
+                select: "organizer -_id",
+            })
+            .lean();
+
+        const userId = website?.belongsToThisEvent?.organizer;
+
+        // website exist but user not found
+        if (!userId) {
+            throwError(404, "Website or organizer doesn't exist");
         }
 
         // Attach the verified subdomain to the payload
         const submissionPayload = {
-            ...formData,
+            firstname,
+            lastname,
+            phone,
+            description,
+            visitorEmail,
+            organizerEmail,
             subdomain,
         };
 
         // 1. Save form data immediately with default "pending" status
-        const savedSubmission = await Submission.create(submissionPayload);
+        const savedSubmission = await Submission.create({
+            ...submissionPayload,
+            organizer: userId
+        });
 
         // 2. Attempt to send the email in an isolated try/catch
         try {
@@ -487,7 +540,7 @@ const handleFormSubmission = async (req, res) => {
             savedSubmission.emailStatus = "sent";
             await savedSubmission.save();
 
-            handleSuccessResponse(res, 200, "Form data saved and email sent", savedSubmission);
+            handleSuccessResponse(res, 200, "Form data saved and email sent");
         } catch (emailErr) {
             // Update status to "failed" and log the error message
             savedSubmission.emailStatus = "failed";
@@ -499,7 +552,7 @@ const handleFormSubmission = async (req, res) => {
             // throwError(500, "Form data saved, but failed to send email");
 
             // Option B: Return 200/207 if saving the form is the primary goal
-            handleSuccessResponse(res, 200, "Form saved, email failed", savedSubmission);
+            handleSuccessResponse(res, 200, "Form saved, email failed");
         }
 
     } catch (error) {
@@ -509,8 +562,10 @@ const handleFormSubmission = async (req, res) => {
 
 const getSubmissions = async (_, res) => {
     try {
+        const userId = req.user.id;
+
         // Fetch all submissions, sorted by newest first
-        const submissions = await Submission.find().sort({ createdAt: -1 });
+        const submissions = await Submission.find({ organizer: userId }).sort({ createdAt: -1 }).lean();
         handleSuccessResponse(res, 200, "Fetched submissions", submissions);
     } catch (error) {
         handleErrorResponse(res, error);

@@ -2,6 +2,8 @@ const mongoose = require("mongoose");
 
 const submissionSchema = new mongoose.Schema(
     {
+        // user reference: to whom these visitors belong to        
+        organizer: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
         visitorEmail: { type: String, required: true },
         organizerEmail: { type: String, required: true },
         firstname: String,
@@ -18,5 +20,7 @@ const submissionSchema = new mongoose.Schema(
         createdAt: { type: Date, default: Date.now }
     }
 );
+
+submissionSchema.index({ organizer: 1, createdAt: -1 });
 
 module.exports = mongoose.model("Submission", submissionSchema);
